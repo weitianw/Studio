@@ -59,6 +59,7 @@ __pycache__/
 /docs/**/*.zip
 !/docs/screenshots/
 !/docs/screenshots/*.png
+!/docs/screenshots/*.gif
 
 # large media anywhere (icons used by the interface are tracked explicitly)
 *.mp4
