@@ -1,0 +1,65 @@
+# Allow-list: only source code, scripts, tests and documentation are tracked.
+# Models, engines, user data, generated media and local settings are never committed.
+/*
+!/.gitignore
+!/.gitattributes
+!/README.md
+!/*.bat
+!/server.json
+!/scripts/
+!/studio/
+!/devtest/
+!/docs/
+
+# studio: files created at run time
+/studio/app-data/
+/studio/tmp/
+/studio/pylib/
+/studio/settings.json
+/studio/app-close.json
+/studio/orig_prompts.json
+*.log
+*.log.prev
+__pycache__/
+*.pyc
+
+# devtest: test data and test output (the code is tracked)
+/devtest/state/
+/devtest/states/
+/devtest/comfy-pose/
+/devtest/comfy_new/
+/devtest/comfy_new_pydeps/
+/devtest/comfy_update_*.txt
+/devtest/reports/
+/devtest/.venv/
+/devtest/ui-audit/out/
+/devtest/ui-audit/aud/
+/devtest/ui-audit/st/
+/devtest/ui-audit/sheets/
+/devtest/ui-audit/click_*/
+/devtest/ui-audit/shots_*/
+/devtest/ui-audit/suite_logs/
+/devtest/ui-audit/*.out
+*_bak_*.py
+*_bak_*.js
+*_bak_*.css
+*_bak_*.json
+
+# docs: text only, except the README screenshots
+/docs/**/*.mp4
+/docs/**/*.mov
+/docs/**/*.webm
+/docs/**/*.png
+/docs/**/*.jpg
+/docs/**/*.jpeg
+/docs/**/*.webp
+/docs/**/*.gif
+/docs/**/*.wav
+/docs/**/*.mp3
+/docs/**/*.zip
+!/docs/screenshots/
+!/docs/screenshots/*.png
+
+# large media anywhere (icons used by the interface are tracked explicitly)
+*.mp4
+*.wav

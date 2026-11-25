@@ -1,0 +1,1604 @@
+/* 生视频页：尾帧、续接、自定义分辨率、高级参数弹窗、详情参数（app.css 之后载入） */
+.vd-res { width: 100%; margin-top: 8px; height: 34px; font-size: 13px; }
+.vd-res.bad, .vd-res.bad:focus { border-color: var(--red); }
+
+/* 首帧（大）+ 尾帧（右边窄的一格）并排；下面一行尺寸 / 续接 */
+.vd-frames { display: flex; gap: 10px; align-items: stretch; }
+.vd-frames > .ig-src { flex: 1 1 auto; min-width: 0; margin: 0; display: flex; justify-content: center; }
+.vd-f2 { flex: none; width: 84px; min-height: 84px; position: relative; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  border: 1.5px dashed var(--line); color: var(--text-3); font-size: 12.5px; cursor: pointer; box-sizing: border-box; transition: background .15s, color .15s; }
+.vd-f2 svg { width: 20px; height: 20px; margin-bottom: 2px; }
+.vd-f2 .tiny { font-size: 11px; }
+.vd-f2:hover, .vd-f2.over { background: rgba(127, 127, 127, .08); color: var(--text); }
+.vd-f2:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.vd-f2:not(.empty) { border: 0; background: rgba(127, 127, 127, .1); }
+.vd-f2 img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.vd-src-i { margin-top: 4px; display: flex; flex-wrap: wrap; align-items: center; gap: 0 4px; }
+.vd-chain-t { display: inline-flex; align-items: center; gap: 4px; color: var(--blue); }
+.vd-chain-t svg { width: 14px; height: 14px; }
+.vd-link { border: 0; background: none; padding: 1px 5px; color: var(--text-2); font-size: 12px; cursor: pointer; border-radius: 6px; text-decoration: underline; text-underline-offset: 2px; }
+.vd-link:hover { background: rgba(127, 127, 127, .14); color: var(--text); }
+#vd-model-d[hidden] { display: none; }
+
+/* 分辨率四个按钮一行放下 */
+#vd-size button { padding: 6px 2px; font-size: 12.5px; white-space: nowrap; min-width: 0; }
+
+/* 宽窗口：左栏一屏放下——首帧预览矮一点，提示词框最小 120 */
+@media (min-width: 1200px) {
+  .ig-v2 #vd-src .ig-src img { max-height: 150px; }
+  .ig-v2 #vd-src .ig-src.empty { padding: 14px 10px; }
+  .ig-v2 > .ig-top-f .ig-comp-top #vd-prompt.textarea { min-height: 120px; }
+  /* 大预览下面的缩略图一排：固定行高（aspect-ratio + overflow:hidden 时行会被压扁成一条条） */
+  .vd-stage:not(:empty) + .vd-gal { grid-auto-rows: 96px; }
+  .vd-stage:not(:empty) + .vd-gal .vd-tile { aspect-ratio: auto; height: 96px; }
+}
+
+/* 窄窗口：输入框左边首帧方块旁的尾帧小方块 */
+.ig-crow .vd-endt { width: 44px; height: 44px; border-radius: 11px; margin-left: -8px; }
+.ig-crow .vd-endt svg { width: 20px; height: 20px; }
+.ig-crow .vd-endt[hidden] { display: none; }
+
+/* 右边大预览下面那一排：文字太长时省略，按钮不换行 */
+.vd-stage-bar { flex-wrap: nowrap; }
+.vd-stage-bar .vd-stage-i { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vd-stage-bar .btn { flex: none; }
+.vd-stage-bar .btn svg, .vd-view .btn svg { width: 15px; height: 15px; }
+
+/* 高级参数弹窗：三列紧凑排，一屏放下 */
+.modal.wide.vd-adv-m { width: min(760px, 94vw) !important; max-height: 90vh !important; padding: 22px 24px; }
+.vd-adv-h { margin-bottom: 4px; }
+.vd-adv .ig-sec:first-child { border-top: 0; padding-top: 0; margin-top: 10px; }
+.vd-adv .ig-sec { margin: 12px 0 8px; padding-top: 10px; }
+.vd-g3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 14px; }
+.vd-g2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0 18px; }
+.vd-adv .field { margin-bottom: 10px; min-width: 0; }
+.vd-adv .label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vd-adv .input, .vd-adv .select, .vd-adv .dd { width: 100%; }
+.vd-adv .textarea { min-height: 0; height: 84px; resize: vertical; }
+.vd-adv input[type=range] { width: 100%; }
+.vd-sw { display: flex; align-items: center; justify-content: space-between; gap: 10px; height: 40px; padding: 0 12px; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--line); font-size: 13px; cursor: pointer; transition: background .15s; }
+.vd-sw:hover { background: rgba(127, 127, 127, .08); }
+.vd-sw.off { opacity: .5; cursor: default; }
+@media (max-width: 640px) { .vd-g3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* 详情：参数一格一格排，一屏放下 */
+.vd-kv { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 10px; font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.vd-kv span { white-space: nowrap; }
+.vd-kv i { font-style: normal; color: var(--text-3); margin-right: 5px; }
+/* 视频详情：按组（画面 / 采样 / 增强 / 改视频 / 其他），组名一列、参数一列；开关开着的高亮、关着的变淡 */
+.vd-kvg { display: grid; grid-template-columns: max-content 1fr; gap: 5px 14px; align-items: baseline; }
+.vd-kvg .vd-g { display: contents; }
+.vd-kvg .vd-g > b { font-weight: 600; color: var(--text-2); }
+.vd-kvg .vd-g > div { display: flex; flex-wrap: wrap; gap: 3px 14px; min-width: 0; }
+.vd-kvg span.on { color: var(--blue); font-weight: 600; }
+.vd-kvg span.off { color: var(--text-3); }
+.vd-kvg span.off i { color: var(--text-3); }
+@media (max-width: 480px) {  /* 手机：组名放在每组开头（不单独占一列），少折几行，详情一屏放下 */
+  .vd-kvg { display: flex; flex-direction: column; gap: 4px; }
+  .vd-kvg .vd-g { display: flex; flex-wrap: wrap; gap: 3px 12px; align-items: baseline; }
+  .vd-kvg .vd-g > div { display: contents; }
+}
+.modal.vd-view { max-height: 94vh; }
+.modal.vd-view .vd-player { max-height: calc(94vh - 330px); }
+.modal.vd-view .vd-prompt { max-height: 4.8em; }
+/* LoRA 列表 */
+.vd-lora { gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: nowrap; }
+.vd-lora .select { flex: 1 1 auto; min-width: 0; }
+.vd-lora .input { width: 76px; flex: none; text-align: center; }
+.vd-lora .seg { flex: none; }
+.vd-lora-e { padding: 2px 0 8px; }
+#va-loras { margin-bottom: 4px; }
+
+/* 缩略图标注：左上角模型 / LoRA，左下角生成时间和时长 */
+.vd-badges { position: absolute; left: 6px; top: 6px; display: flex; gap: 4px; pointer-events: none; }
+.vd-badges b { font-size: 10.5px; font-weight: 600; line-height: 1; padding: 4px 6px; border-radius: 6px; color: #fff; background: rgba(0, 0, 0, .55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); white-space: nowrap; }
+.vd-badges b.lo { background: rgba(10, 132, 255, .78); }
+.vd-meta { white-space: nowrap; max-width: calc(100% - 16px); overflow: hidden; text-overflow: ellipsis; }
+.vg-stack .vd-meta { max-width: calc(100% - 56px); }  /* 2026-11-10：一组的缩略图右下角有“查看这一组”按钮（手机上 40px）：文字让开，放不下时省略号，不再被按钮盖住 */
+
+/* 时间线 */
+.vd-tl { flex: none; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+.vd-tl-h { gap: 8px; align-items: center; margin-bottom: 8px; }
+.vd-tl-h b { font-size: 14px; }
+.vd-tl-h .ig-cb { height: 30px; }
+.vd-tl-h .ig-cb svg { width: 14px; height: 14px; }
+.vd-tl-h .ig-cb[disabled] { opacity: .45; pointer-events: none; }
+.vd-tl-row { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 6px; scrollbar-width: thin; }
+.vd-tl-s { flex: none; width: 132px; border-radius: 10px; cursor: pointer; }
+.vd-tl-s.drag { opacity: .4; }
+.vd-tl-s.over .vd-tl-th { box-shadow: -3px 0 0 var(--blue); }
+.vd-tl-th { position: relative; height: 74px; border-radius: 10px; overflow: hidden; background: rgba(127, 127, 127, .12); display: grid; place-items: center; color: var(--text-3); }
+.vd-tl-th > svg { width: 22px; height: 22px; }
+.vd-tl-th img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.vd-tl-s.on .vd-tl-th { box-shadow: 0 0 0 2px var(--blue); }
+.vd-tl-i { position: absolute; left: 5px; top: 5px; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; background: rgba(0, 0, 0, .6); color: #fff; font-size: 11px; font-weight: 600; display: grid; place-items: center; }
+.vd-tl-d { position: absolute; left: 6px; bottom: 4px; font-size: 10.5px; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, .8); }
+.vd-tl-w { position: absolute; right: 26px; top: 4px; width: 20px; height: 20px; border-radius: 10px; background: rgba(255, 159, 10, .9); color: #fff; display: grid; place-items: center; }
+.vd-tl-w svg { width: 14px; height: 14px; }
+.vd-tl-x { all: unset; position: absolute; right: 4px; top: 4px; width: 20px; height: 20px; border-radius: 10px; background: rgba(0, 0, 0, .55); color: #fff; display: grid; place-items: center; cursor: pointer; opacity: 0; transition: opacity .12s; }
+.vd-tl-x svg { width: 11px; height: 11px; }
+.vd-tl-s:hover .vd-tl-x, .vd-tl-x:focus-visible { opacity: 1; }
+.vd-tl-f { display: flex; align-items: center; gap: 2px; height: 24px; font-size: 11.5px; color: var(--text-3); }
+.vd-tl-f > button { all: unset; width: 20px; height: 20px; border-radius: 6px; display: grid; place-items: center; cursor: pointer; font-size: 14px; color: var(--text-2); }
+.vd-tl-f > button:hover { background: rgba(127, 127, 127, .14); color: var(--text); }
+.vd-tl-f .vd-tl-r { margin-left: auto; }
+.vd-tl-f .vd-tl-r svg { width: 13px; height: 13px; }
+.vd-tl-p { min-width: 0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vd-tl-add { all: unset; box-sizing: border-box; flex: none; width: 112px; height: 74px; border-radius: 10px; border: 1.5px dashed var(--line); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px; color: var(--text-3); cursor: pointer; }
+.vd-tl-add svg { width: 18px; height: 18px; }
+.vd-tl-add:hover { border-color: var(--blue); color: var(--blue); }
+@media (hover: none) { .vd-tl-x { opacity: 1; } }
+
+.vd-iby { margin-top: 6px; }
+
+/* LoRA 触发词 */
+.vd-lw { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: -2px 0 8px; }
+.vd-lw .tiny { margin-right: 2px; }
+.vd-lw .chip { font-size: 11.5px; padding: 2px 8px; min-height: 0; height: 22px; }
+/* Civitai */
+.modal.cv-modal { width: min(1080px, 94vw) !important; max-height: 88vh !important; height: 88vh; display: flex; flex-direction: column; }  /* 固定高度：列表 / 详情切换时窗口不跳（2026-11-11） */
+.cv-one-m { grid-template-columns: repeat(auto-fill, minmax(160px, 220px)); margin-bottom: 12px; }
+.cv-head { margin-bottom: 10px; flex: none; }
+#cv-key { flex: none; }
+/* 第二行（2026-11-11 按指南整理）：搜索占满，后面是一样高、一样样式的下拉框；不再是一长排按钮 */
+.cv-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; flex: none; }
+.cv-qw { position: relative; flex: 1 1 240px; min-width: 180px; display: flex; align-items: center; }
+.cv-qw > svg { position: absolute; left: 11px; width: 16px; height: 16px; color: var(--text-3); pointer-events: none; }
+.cv-qw > .input { width: 100%; height: 36px; min-height: 36px; padding-left: 34px; }
+.cv-bar :is(.select, .dd) { width: auto; height: 36px; min-height: 36px; flex: none; }
+/* 进了详情 / 一个 LoRA：返回在滚动区外面，滚到哪里都能点（2026-11-11 用户：以前要滑到最上面才看得到） */
+.cv-nav { flex: none; display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.cv-nav[hidden] { display: none; }
+.cv-nav .cv-back { margin: 0; }
+.cv-modal.cv-det .cv-bar, .cv-modal.cv-det #cv-key { display: none; }
+.cv-keyrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 10px 12px; border-radius: 12px; background: rgba(255, 159, 10, .1); margin-bottom: 10px; }
+.cv-keyrow .tiny { flex: 1 1 100%; }
+.cv-keyrow .input { flex: 1; height: 34px; }
+.cv-body { flex: 1 1 auto; min-height: 240px; overflow-y: auto; }
+.cv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: 12px; }
+.cv-card { all: unset; box-sizing: border-box; cursor: pointer; border-radius: 12px; padding: 0 0 6px; }
+.cv-card:hover .cv-n { color: var(--blue); }
+.cv-th { position: relative; aspect-ratio: 3 / 4; border-radius: 12px; overflow: hidden; background: rgba(127, 127, 127, .12); }
+.cv-th img, .cv-th video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cv-th video.cv-hv { position: absolute; inset: 0; }  /* 鼠标停上去才放的小视频，盖在静态帧上 */
+.cv-grid > .cv-card { content-visibility: auto; contain-intrinsic-size: auto 300px; }  /* 屏幕外的卡片先不画：列表很长时往下滑不卡（2026-11-11） */
+.cv-nom { display: grid; place-items: center; height: 100%; font-size: 12px; color: var(--text-3); }
+.cv-have { position: absolute; left: 6px; top: 6px; display: inline-flex; align-items: center; gap: 3px; font-size: 11px; padding: 3px 7px; border-radius: 7px; background: rgba(48, 209, 88, .9); color: #fff; }
+.cv-have svg { width: 11px; height: 11px; }
+.cv-n { margin-top: 6px; font-size: 13px; font-weight: 600; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.cv-s { margin-top: 2px; }
+.cv-back { margin-bottom: 0; }
+.cv-back svg { width: 14px; height: 14px; }
+.cv-d { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 16px; }
+.cv-media { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-content: start; }
+.cv-mi { border-radius: 10px; overflow: hidden; background: rgba(127, 127, 127, .12); aspect-ratio: 3 / 4; }
+.cv-mi img, .cv-mi video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cv-pair { margin: 10px 0 2px; }
+.cv-pair svg, .cv-f .btn svg { width: 14px; height: 14px; }
+.cv-v { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.cv-w { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+.cv-w .chip { font-size: 11.5px; height: auto; min-height: 22px; padding: 2px 8px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; text-align: left; line-height: 1.45; }  /* 高度跟着字走：以前固定 22px，长的一段字叠在一起（2026-11-11） */
+.cv-w .chip.long { display: block; cursor: pointer; border-radius: 10px; padding: 4px 9px; }
+.cv-w .chip.long > .cw-t { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }  /* 截断放在里面这层：外面的内边距里不会再露出半行 */
+.cv-w .chip.long.open > .cw-t { display: block; -webkit-line-clamp: unset; }
+.cv-f { gap: 8px; margin-top: 6px; flex-wrap: nowrap; }
+.cv-fn { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cv-ok { display: inline-flex; align-items: center; gap: 3px; color: var(--green, #30d158); }
+.cv-ok svg { width: 12px; height: 12px; }
+.cv-v.sel b { color: var(--blue); }
+.cv-vsel { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.cv-vsel .chip { font-size: 12px; min-height: 28px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cv-dwrap { margin-top: 12px; }
+.cv-desc { font-size: 13px; line-height: 1.65; color: var(--text-2); overflow-wrap: anywhere; }
+.cv-desc.clip { max-height: 300px; overflow: hidden; -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); }
+.cv-desc > :first-child { margin-top: 0; }
+.cv-desc p, .cv-desc ul, .cv-desc ol, .cv-desc blockquote, .cv-desc pre, .cv-desc table { margin: 0 0 8px; }
+.cv-desc ul, .cv-desc ol { padding-left: 20px; }
+.cv-desc li { margin: 2px 0; }
+.cv-desc li > p { margin: 0; }
+.cv-desc :is(h3, h4, h5, h6) { margin: 12px 0 6px; font-size: 13.5px; font-weight: 650; color: var(--text); }
+.cv-desc :is(strong, b) { color: var(--text); font-weight: 600; }
+.cv-desc a { color: var(--blue); text-decoration: none; word-break: break-all; }
+.cv-desc blockquote { padding-left: 10px; border-left: 3px solid var(--line-2, var(--line)); }
+.cv-desc code { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 12px; padding: 1px 4px; border-radius: 4px; background: rgba(127, 127, 127, .14); }
+.cv-desc pre { white-space: pre-wrap; padding: 8px 10px; border-radius: 8px; background: rgba(127, 127, 127, .1); }
+.cv-desc pre code { padding: 0; background: none; }
+.cv-desc hr { border: 0; border-top: 1px solid var(--line); margin: 10px 0; }
+.cv-desc table { border-collapse: collapse; display: block; overflow-x: auto; }
+.cv-desc :is(td, th) { border: 1px solid var(--line); padding: 3px 6px; }
+.cv-dimg { position: relative; display: inline-block; max-width: 100%; margin: 4px 0; border-radius: 8px; overflow: hidden; vertical-align: top; }
+.cv-dimg img { display: block; max-width: 100%; max-height: 420px; height: auto; }
+.cv-dmore { margin-top: 4px; }
+@media (hover: hover) and (pointer: fine) { .cv-desc a:hover { text-decoration: underline; } }
+/* 下载进度：不跟着上面的列表一起被压扁（2026-11-11 用户：被遮住——以前窗口不够高时每一行只剩 8 像素），至少完整显示一条，多了在这里面滚 */
+.cv-dl:not(:empty) { flex: none; border-top: 1px solid var(--line); margin-top: 8px; padding-top: 8px; display: grid; grid-auto-rows: min-content; gap: 4px; min-height: 37px; max-height: 120px; overflow-y: auto; }
+.cv-dli { position: relative; display: flex; gap: 8px; align-items: center; font-size: 12.5px; min-height: 28px; box-sizing: border-box; padding: 4px 8px; border-radius: 8px; background: rgba(127, 127, 127, .08); overflow: hidden; }
+/* 示例图可以点开看完整的 */
+.cv-mi > img, .cv-mi > video, .cv-dimg > img { cursor: zoom-in; }
+body.guard :is(.cv-mi, .cv-dimg) > [data-r] { cursor: default; }
+.cv-zoom { position: fixed; inset: 0; z-index: 400; display: grid; place-items: center; background: rgba(0, 0, 0, .86); cursor: zoom-out; animation: fade .15s; }
+.cv-zoom > img, .cv-zoom > video { max-width: 94vw; max-height: 92vh; max-height: 92dvh; object-fit: contain; border-radius: 6px; box-shadow: 0 10px 40px rgba(0, 0, 0, .5); }
+.cv-zoom > video { cursor: default; }
+.cv-zn { position: absolute; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom)); transform: translateX(-50%); font-size: 12.5px; color: rgba(255, 255, 255, .8); padding: 3px 10px; border-radius: 999px; background: rgba(0, 0, 0, .4); }
+.cv-zx { all: unset; position: absolute; top: calc(14px + env(safe-area-inset-top)); right: 14px; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: rgba(255, 255, 255, .14); cursor: pointer; }
+.cv-zx svg { width: 18px; height: 18px; }
+@media (hover: hover) { .cv-zx:hover { background: rgba(255, 255, 255, .24); } }
+.cv-dli i { position: absolute; left: 0; bottom: 0; height: 2px; background: var(--blue); }
+.cv-dli.error .tiny { color: var(--red); }
+.cv-dlmore { flex: none; font-size: 11.5px; font-weight: 600; padding: 1px 7px; border-radius: 999px; background: rgba(127, 127, 127, .18); color: var(--text-2); cursor: default; }
+@media (max-width: 760px) { .cv-d { grid-template-columns: minmax(0, 1fr); } .cv-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* 手机：示例横向滑动（一个版本最多 20 个，竖着排要滑很久才到说明） */
+  .cv-media { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 44%; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+  .cv-media::-webkit-scrollbar { display: none; } .cv-mi { scroll-snap-align: start; }
+  .cv-vsel { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; } .cv-vsel::-webkit-scrollbar { display: none; } .cv-vsel .chip { flex: none; max-width: 70vw; } }
+
+/* 首帧 / 尾帧：两格一样高，整格都能点（以前首帧框被固定成 92px，下面空着一块点不了） */
+.vd-frames { min-height: 132px; }
+.vd-frames > .ig-src.empty { height: auto !important; min-height: 132px; padding: 12px; justify-content: center; align-self: stretch; }
+.vd-f2 { min-height: 132px; align-self: stretch; }
+.vd-frames > .ig-src:not(.empty) { align-items: center; }
+
+/* 改视频：页头右边“生成视频 / 改视频”切换；原视频预览；从第几秒开始；改视频的选项 */
+.ve-mode { flex: none; align-self: flex-end; }
+.ve-mode button { padding: 6px 14px; font-size: 13px; white-space: nowrap; }
+.ve-task[hidden], #ve-src[hidden], #vd-src[hidden], .ve-opts[hidden], .vd-opts[hidden], .vd-opts:empty { display: none !important; }
+.ve-vid { background: #000; }
+.ve-vid video { display: block; max-width: 100%; max-height: 380px; margin: 0 auto; }
+@media (min-width: 1200px) { .ig-v2 #ve-src .ve-vid video { max-height: 150px; } }
+.ig-panel .ve-vid video { max-height: 170px; }
+.ve-src-i { gap: 0 8px; }
+.ve-start { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; white-space: nowrap; }
+.ve-start .input { width: 62px; height: 26px; min-height: 0; padding: 0 6px; font-size: 12.5px; text-align: center; }
+.ve-opts { display: grid; gap: 10px; margin-top: 4px; }
+.ve-opts .field { margin: 0; }
+.ve-opts .input { height: 34px; font-size: 13px; }
+#ve-part button, #ve-audio button, #ve-by button { padding: 6px 2px; font-size: 12.5px; white-space: nowrap; min-width: 0; }
+.ve-pick-t { position: relative; display: flex; align-items: center; justify-content: center; color: var(--text-3); }
+.ve-pick-t svg { width: 26px; height: 26px; }
+.ve-pick-d { position: absolute; right: 4px; bottom: 4px; padding: 1px 6px; border-radius: 6px; background: rgba(0, 0, 0, .6); color: #fff; font-size: 11px; }
+@media (max-width: 760px) { .ve-mode { align-self: auto; } .ve-mode button { padding: 6px 12px; } }
+/* 改视频：宽窗口时选项两列排，原视频预览矮一点，左栏少滚动；手机上切换按钮让开右上角的小窗按钮 */
+@media (min-width: 1200px) {
+  .ig-v2 #ve-src .ve-vid video { max-height: 116px; }
+  .ig-v2 #ve-src .vd-frames, .ig-v2 #ve-src .vd-frames > .ig-src.empty, .ig-v2 #ve-src .vd-f2 { min-height: 116px; }
+  .ve-opts { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: end; }
+  .ve-opts > .ve-wide { grid-column: 1 / -1; }
+}
+.ve-opts > .ig-check { min-height: 34px; align-items: center; }
+@media (max-width: 760px) { .ve-mode { margin-right: 30px; } }
+/* “从视频库选”放在原视频空框的右下角（不再单独占一行） */
+.ig-src.empty .ve-pick-in { position: absolute; right: 8px; bottom: 8px; height: 28px; min-height: 0; padding: 0 12px; font-size: 12.5px; }
+#ve-pick-area { position: relative; }
+/* 改视频：“模式”标签和按钮同一行；宽窗口时提示词框、原视频框矮一点，左栏一屏放下 */
+.field.ve-mode-f { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 12px; }
+.field.ve-mode-f > .label { margin: 0; }
+.field.ve-mode-f > .ve-task { width: 100%; }
+.field.ve-mode-f > #vd-model-d { grid-column: 1 / -1; margin-top: 4px !important; }
+@media (min-width: 1200px) {
+  .ig-v2.ve-on > .ig-top-f .ig-comp-top #vd-prompt.textarea { min-height: 64px; }  /* 平时还是 80 起（JS 设），地方不够时才缩到 64，左栏不滚动（2026-11-05） */
+  .ig-v2.ve-on .ig-panel[data-o="2"] { order: 1; }
+  .ig-v2.ve-on .ig-panel[data-o="1"] { order: 2; }
+  .ig-v2 #ve-src .ve-vid video { max-height: 100px; }
+  .ig-v2 #ve-src .vd-frames, .ig-v2 #ve-src .vd-frames > .ig-src.empty, .ig-v2 #ve-src .vd-f2 { min-height: 100px; }
+}
+@media (min-width: 1200px) {
+  .ig-v2 #ve-src .vd-f2, .ig-v2 #ve-src .vd-frames > .ig-src.empty { padding: 8px; }  /* 空格子原来上下 50px 的内边距会把整排撑到 160 多 */
+}
+/* 改视频：原视频的尺寸 / 时长 / “从第几秒开始”放在“原视频”标签那一行的右边（少占一行） */
+#ve-src { position: relative; }
+#ve-src .ve-src-i { position: absolute; right: 0; bottom: calc(100% + 4px); margin: 0; max-width: calc(100% - 84px); justify-content: flex-end; }
+/* 空框里的“从视频库选”排在提示文字下面（框矮的时候叠在一起） */
+.ig-src.empty .ve-pick-in { position: static; height: 26px; margin-top: -2px; }
+.ig-v2 #ve-src .vd-frames > .ig-src.empty { gap: 6px; }
+/* 改视频的底模：电脑上在标题栏“生成视频 / 改视频”左边（不占左栏一行）；手机上标题栏放不下，放在改视频选项的最后 */
+.ve-head { flex: none; align-self: flex-end; flex-wrap: nowrap; gap: 14px; }
+.ve-head > .ve-mode { align-self: auto; }
+.ve-base-h { gap: 8px; flex-wrap: nowrap; }
+.ve-base-h[hidden] { display: none !important; }
+.ve-base-h > .label { margin: 0; white-space: nowrap; }
+.ve-base button { padding: 6px 14px; font-size: 13px; white-space: nowrap; }
+.ve-base-f .ve-base button { padding: 6px 2px; font-size: 12.5px; min-width: 0; }
+@media (min-width: 761px) { .ve-opts > .ve-base-f { display: none !important; } }
+@media (max-width: 760px) { .ve-base-h { display: none !important; } .ve-head { align-self: auto; } }
+/* 高级参数：常用的两列；“更多参数”“提示词模板”各自收起 */
+.vd-adv .va-gen { margin-top: 4px; }
+.vd-adv .adv-more-b > .vd-stack { margin-bottom: 12px; }
+/* 提示词那一行：换衣服时右边是“使用模板”开关 */
+.label.vd-plab { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 26px; }  /* 26px：右边“使用模板”开关显示 / 不显示时这一行一样高，下面不跳 */
+.ve-tplw { display: inline-flex; align-items: center; gap: 6px; font-weight: 400; font-size: 12.5px; color: var(--text-2); }
+.ve-tplw[hidden] { display: none !important; }
+.ve-tplsw { transform: scale(.78); transform-origin: right center; margin-left: 2px; }
+.ve-opts .vd-sw { height: 34px; }
+.ve-sws { display: flex; flex-direction: column; gap: 8px; }  /* 动作跟随 / 匹配原视频色调：整行开关，上下排 */
+.ve-locrow { cursor: default; } .ve-locrow .seg { margin-left: auto; padding: 2px; } .ve-locrow .seg button { height: 28px; min-height: 0; padding-top: 0; padding-bottom: 0; } .ve-locrow .switch { cursor: pointer; }  /* 局部修改开着时：衣服 / 整个人 和开关同一行（2026-11-12） */
+/* 高级参数最下面的提示词模板（只读） */
+.ve-tplv { margin-bottom: 8px; }
+.ve-tplt { padding: 8px 10px; border-radius: 10px; box-shadow: inset 0 0 0 1px var(--line); font: 12px/1.55 ui-monospace, Consolas, monospace; color: var(--text-2); white-space: pre-wrap; word-break: break-word; user-select: text; }
+.ve-tpln { margin: -2px 0 8px; }
+/* 生视频 · H3 的更多条件：首帧下面一排排小卡片（缩略图 · 名称 · 时间 / 选项 · ×），最后是“＋ 更多条件” */
+.vd-x { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.vx-it { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 4px 4px 4px 4px; border-radius: 10px; box-shadow: inset 0 0 0 1px var(--line); font-size: 12.5px; }
+.vx-th { flex: none; width: 44px; height: 32px; border-radius: 7px; overflow: hidden; background: rgba(127, 127, 127, .12); display: grid; place-items: center; color: var(--text-2); }
+.vx-th img, .vx-th video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.vx-ic svg { width: 18px; height: 18px; }
+.vx-n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vx-c { display: inline-flex; align-items: center; gap: 4px; flex: none; color: var(--text-2); }
+.vx-c .input { width: 56px; height: 28px; padding: 0 6px; font-size: 12.5px; }
+.vx-sel { flex: none; width: auto; height: 28px; padding: 0 24px 0 8px; font-size: 12.5px; }
+.vx-x { flex: none; }
+.vx-bar { gap: 6px; }
+.vx-bar .btn svg { width: 14px; height: 14px; margin-right: 2px; }
+.vx-t2 { color: var(--text-3); }
+/* 提示词那一行：“使用模板”靠右（标签本身是 inline 的，要撑满一行才能分到两头） */
+.field:not(.ig-dock-f) > .label.vd-plab { display: flex !important; width: 100%; }  /* 宽窗口时提示词这一行另有 display: block 的规则 */
+.vd-plab > .ve-tplw { margin-left: auto; }
+
+/* LoRA 商店 + 防窥模式：R 及以上的示例图 / 视频模糊（弹窗里也生效，盖过“弹窗里不受影响”那条），点“18+ 点一下显示”才看；PG / PG-13 照常显示。没开防窥：遮罩不出现，全部照常 */
+.cv-veil { display: none; }
+body.guard .cv-modal :is(img, video)[data-r] { filter: blur(28px) brightness(.55) saturate(.6) !important; transform: scale(1.15); }
+body.guard .cv-modal .cv-veil { position: absolute; inset: 0; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; color: #fff; font-size: 12px; text-shadow: 0 1px 2px rgba(0, 0, 0, .5); }
+body.guard .cv-modal .cv-veil b { font-size: 13px; padding: 2px 8px; border-radius: 6px; background: rgba(0, 0, 0, .45); border: 1px solid rgba(255, 255, 255, .35); }
+@media (hover: hover) { body.guard .cv-modal .cv-veil:hover b { background: rgba(0, 0, 0, .7); } }
+.cv-mi { position: relative; }
+body.guard .cv-modal .cv-have { z-index: 2; }  /* 已下载的标记在遮罩上面 */
+
+/* 改视频 · 原视频预览：不自动播放，点画面或中间的按钮播放 / 暂停，右下角放大看；竖屏视频的框高一些 */
+.ve-vid { position: relative; display: flex; align-items: center; justify-content: center; }
+.ve-vid video { cursor: pointer; }
+.ig-panel .ve-vid.tall video { max-height: 300px; }
+@media (min-width: 1200px) { .ig-v2 #ve-src .ve-vid.tall video { max-height: 160px; } }
+.ve-play { position: absolute; left: 50%; top: 50%; width: 42px; height: 42px; margin: -21px 0 0 -21px; border: 0; border-radius: 50%; padding: 0; display: grid; place-items: center; cursor: pointer;
+  background: rgba(0, 0, 0, .55); color: #fff; box-shadow: 0 0 0 1px rgba(255, 255, 255, .25); }
+.ve-play svg { width: 18px; height: 18px; margin-left: 2px; }
+.ve-vid.playing .ve-play { display: none; }
+.ve-bigb { position: absolute; right: 6px; bottom: 6px; width: 28px; height: 28px; border: 0; border-radius: 8px; padding: 0; display: grid; place-items: center; cursor: pointer; background: rgba(0, 0, 0, .55); color: #fff; }
+.ve-bigb svg { width: 14px; height: 14px; }
+@media (hover: hover) { .ve-play:hover, .ve-bigb:hover { background: rgba(0, 0, 0, .8); } }
+.modal.ve-big-m .vd-player { max-height: calc(94vh - 130px); }
+/* 防窥模式：原视频和页面上别的图一样先黑着，鼠标停 0.9 秒才显示（中间已经有播放按钮，不再叠防窥图标） */
+body.guard .ve-vid video { filter: brightness(0); transition: filter .2s; }
+body.guard .ve-vid:hover video, body.guard .ve-vid.playing video { filter: none; transition-delay: .9s; }
+body.guard .ve-vid::after { display: none; }
+/* 原视频的尺寸 / 时长和“从第几秒开始”保持一行：窄的时候尺寸那段截短（不换行，换行会顶到上面） */
+#ve-src .ve-src-i { flex-wrap: nowrap; white-space: nowrap; }
+#ve-src .ve-src-m { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+#ve-src .ve-src-i > .ve-start { flex: none; }
+/* 改衣“做法”里新加的那种：按钮文字后面一个小小的“新” */
+.ve-new { display: inline-block; margin-left: 4px; padding: 0 5px; border-radius: 980px; font-size: 10px; font-weight: 600; line-height: 15px; background: var(--blue-soft); color: var(--blue); vertical-align: 1px; }
+html[data-theme="dark"] .ve-new { background: rgba(64, 156, 255, .18); color: #6cb2ff; }
+/* 做法 / 底模下面那一行：选中的这种做法的优势 */
+.ve-rec { margin-top: 4px; line-height: 1.4; }
+.vd-stack { display: grid; gap: 12px; }
+/* 提示词语言：提示词那一行里，“提示词”右边 */
+.vd-lang { display: inline-flex; align-items: center; gap: 6px; font-weight: 400; font-size: 12.5px; color: var(--text-2); }
+.vd-lang-s { display: inline-flex; }
+.vd-lang-s button { height: 24px; padding: 0 9px; font-size: 12px; }
+/* 翻译结果（提示词框下面）：可修改，附中文原文 */
+.vd-tr { margin: 10px 0 0; padding: 10px 12px; border-radius: 12px; background: rgba(127, 127, 127, .07); box-shadow: inset 0 0 0 1px var(--line); }
+.vd-tr[hidden] { display: none !important; }
+.vd-tr-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--text-2); margin-bottom: 6px; }
+.vd-tr-h.err { color: var(--red); }
+.vd-tr-t.textarea { min-height: 64px; max-height: 26vh; font-size: 13.5px; }
+.vd-tr-src { margin-top: 6px; overflow-wrap: anywhere; }
+@media (min-width: 1200px) { .ig-v2 > .ig-top-f > .vd-tr { order: 3; margin: -6px 0 14px; } }
+/* 生成那一栏的第一行：本次使用（一行，放不下就省略号，鼠标停留看全文）；改视频宽窗口时右边是“收起参数 / 展开参数” */
+.ig-cbar > .vd-sum { position: absolute; display: flex; align-items: center; gap: 10px; min-width: 0; font-size: 12px; color: var(--text-2); }
+@media (min-width: 1200px) { .ig-v2 > .ig-top-f > .ig-cbar.has-sum { padding-top: 44px; } .ig-cbar.has-sum > .vd-sum { top: 10px; left: 2px; right: 0; } }
+@media (max-width: 1199px) { .ig-top-f > .ig-cbar.has-sum { position: relative; padding-top: 32px; } .ig-cbar.has-sum > .vd-sum { top: 8px; left: 14px; right: 14px; } }
+.vd-sum-t { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* 2026-11-05 用户要求：本次使用尽量完整显示——放不下就换行（最多 3 行），不再一行省略；生成那一栏的上边距跟着多出来的行数加高（JS 设 --sumx） */
+.ig-cbar > .vd-sum > .vd-sum-t { white-space: normal; line-height: 17px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow-wrap: anywhere; }
+.ig-cbar > .vd-sum > .vd-fold { align-self: flex-start; }
+@media (min-width: 1200px) { .ig-v2 > .ig-top-f > .ig-cbar.has-sum { padding-top: calc(44px + var(--sumx, 0px)); } }
+@media (max-width: 1199px) { .ig-top-f > .ig-cbar.has-sum { padding-top: calc(32px + var(--sumx, 0px)); } }
+.vd-fold { flex: none; display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 10px 0 8px; border: 0; border-radius: 980px; background: rgba(127, 127, 127, .12); color: var(--text-2); font: inherit; font-size: 12px; cursor: pointer; transition: background .15s, color .15s; }
+.vd-fold svg { width: 14px; height: 14px; transition: transform .2s; transform: rotate(180deg); }  /* 收起参数：箭头朝下；展开参数（已收起）：箭头朝上（2026-11-04 用户反馈原来反了） */
+.vd-fold.on svg { transform: none; }
+@media (hover: hover) and (pointer: fine) { .vd-fold:hover { background: rgba(127, 127, 127, .2); color: var(--text); } .vd-sum.on { cursor: pointer; } }
+@media (min-width: 1200px) {
+  /* 收起参数：参数那一块（时长、分辨率、做法、声音……）藏起来；提示词框的高度由 igV2 的 fitTa 跟着内容算（收起时最小 240），满了在框里滚动 */
+  .ig-v2 > .ig-top-f.vd-folded .ig-panel[data-o="4"] { display: none !important; }
+}
+.vd-sum-a { margin: -4px 0 10px; }
+/* 时长：改视频的“跟随原视频”按钮；超出拖动范围时（数字框填得比拖动条的上限大）拖动条停在最右端，轨道、最右刻度（15+）和数字框变成蓝色 */
+.vd-dur.vd-dur-e { gap: 10px; }
+.vd-follow { flex: none; height: 30px; padding: 0 11px; border: 0; border-radius: 980px; background: rgba(127, 127, 127, .14); color: var(--text-2); font: inherit; font-size: 12px; white-space: nowrap; cursor: pointer; transition: background .15s, color .15s; }
+@media (hover: hover) and (pointer: fine) { .vd-follow:hover { background: rgba(127, 127, 127, .22); color: var(--text); } }
+.vd-follow.on { background: var(--blue-soft); color: var(--blue); font-weight: 600; }
+.ve-togs { display: flex; flex-wrap: wrap; gap: 8px; }
+.ve-tog:disabled { opacity: .45; cursor: not-allowed; background: rgba(127, 127, 127, .14); color: var(--text-2); }
+/* 视频功能一览：标题旁的按钮、浮层 / 弹窗、表格（和使用说明里的表格同一种样子；窄屏每行排成卡片） */
+.vd-title { align-items: center; gap: 8px; }
+.vd-info { flex: none; display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%; background: rgba(127, 127, 127, .12); color: var(--text-2); cursor: pointer; transition: background .15s, color .15s; }
+.vd-info svg { width: 16px; height: 16px; }
+.vd-info.on { background: var(--blue-soft); color: var(--blue); }
+@media (hover: hover) and (pointer: fine) { .vd-info:hover { background: rgba(127, 127, 127, .2); color: var(--text); } }
+.vft-pop { position: fixed; z-index: 170; width: min(940px, calc(100vw - 24px)); max-height: calc(100vh - 120px); overflow: auto; padding: 14px 16px 12px; border-radius: 16px; background: var(--surface); box-shadow: 0 0 0 1px var(--line), 0 18px 50px rgba(0, 0, 0, .32); }
+.vft-h { font-weight: 700; font-size: 15px; margin-bottom: 8px; }
+.vft-wrap { overflow-x: auto; }
+.vft { border-collapse: collapse; width: 100%; font-size: 13px; line-height: 1.55; }
+.vft th, .vft td { border-bottom: 1px solid var(--line); padding: 7px 9px; text-align: left; vertical-align: top; }
+.vft th { color: var(--text-2); font-weight: 600; white-space: nowrap; }
+.vft td:first-child { white-space: nowrap; }
+.vft tr.on td { background: var(--blue-soft); }
+html[data-theme="dark"] .vft tr.on td { background: rgba(64, 156, 255, .14); }
+.vft-note { margin-top: 8px; line-height: 1.6; }
+.vfq td:first-child { white-space: normal; }
+.vfq td:nth-child(2) { white-space: nowrap; }
+.vfq td:nth-child(3) { color: var(--text-2); }
+.vft-go { all: unset; cursor: pointer; color: var(--blue); font-weight: 600; border-radius: 6px; }
+.vft-go:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) { .vft-go:hover { text-decoration: underline; } }
+.vft-more { margin: 10px 0 2px; }
+.vft-tabs { margin-bottom: 10px; }
+.vft-page[hidden] { display: none; }
+.vft-g { font-weight: 600; font-size: 13px; margin: 12px 0 4px; }
+.vff td:first-child { white-space: nowrap; font-weight: 600; }
+.vffd td:nth-child(5) { color: var(--text-2); }
+.vffd { table-layout: fixed; }
+.vffd th:nth-child(1) { width: 13%; } .vffd th:nth-child(2) { width: 30%; } .vffd th:nth-child(3) { width: 25%; } .vffd th:nth-child(4) { width: 17%; } .vffd th:nth-child(5) { width: 15%; }
+.vffd td:first-child { white-space: normal; }
+.vft-full[hidden] { display: none; }
+.vft-full .vft-h { margin-top: 10px; }
+.help-doc .vft { font-size: 14px; }
+@media (max-width: 700px) {
+  .vft thead { display: none; }
+  .vft, .vft tbody, .vft tr, .vft td { display: block; width: auto; }
+  .vft tr { padding: 10px 12px; margin-bottom: 8px; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--line); }
+  .vft td { border: 0; padding: 2px 0; white-space: normal !important; }
+  .vft td:first-child { font-size: 14px; margin-bottom: 2px; }
+  .vft td + td::before { content: attr(data-l) '：'; color: var(--text-2); }
+  .vfq td + td::before { content: '→ '; }
+  .vfq td:nth-child(3)::before { content: none; }
+  .vft tr.on { background: var(--blue-soft); } .vft tr.on td { background: none; }
+}  /* 改衣：直接用作参考图 */
+html[data-theme="dark"] .vd-follow.on { background: rgba(64, 156, 255, .18); color: #6cb2ff; }
+.vd-dur.over .vd-dur-s input[type=range] { background: linear-gradient(90deg, var(--text-2) 0%, var(--blue) 100%); }
+.vd-dur.over .vd-dur-t span.on, .vd-dur.over .vd-dur-n input { color: var(--blue); font-weight: 600; }
+.vd-dur.over .vd-dur-n { box-shadow: inset 0 0 0 1px var(--blue); }
+.vd-dur-e .vd-dur-n input { width: 32px; }
+.vd-dur-n input:disabled, .vd-dur-b button:disabled { opacity: .55; cursor: default; }
+.vd-dur-s input[type=range]:disabled { opacity: .6; }
+.lb-s { display: none; }
+@media (max-width: 600px) { .lb-l { display: none; } .lb-s { display: inline; } }  /* 手机上用短名字（比如底模：自动 / 精简版 / 完整版） */
+.vd-lora-f { margin: -2px 0 6px; opacity: .75; overflow-wrap: anywhere; }  /* LoRA 选择框下面：文件名小字 */
+.ig-lora-n .ig-lora-f { display: block; font-size: 11px; font-weight: 400; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }  /* 高级参数里的底模、做法：各占一整行（按钮带“推荐”时半宽会挤成两行） */
+.seg button:has(.ve-new) { white-space: nowrap; padding-left: 6px; padding-right: 6px; }  /* 带“推荐”的按钮：窄的时候也不折成两行 */
+/* 说明停在文字上显示（问号去掉了，2026-11-04）：有鼠标时文字上出现“帮助”指针，手机上不显示说明 */
+@media (hover: hover) and (pointer: fine) { .label[data-tip], .vd-sw > span[data-tip], .ig-check[data-tip], .ve-tplw > span[data-tip] { cursor: help; } }
+@media (hover: hover) and (pointer: fine) {  /* 鼠标停上去会浮出说明：给个轻微的高亮（手机上没有） */
+  #ve-method button:not(.on):not(:disabled):hover { background: rgba(0, 0, 0, .05); }
+  html[data-theme="dark"] #ve-method button:not(.on):not(:disabled):hover { background: rgba(255, 255, 255, .07); }
+}
+
+/* 关了模板时提示词旁边的“写法要点”（问号里是作者说的 / 实测过的写法） */
+.ve-tips { display: inline-flex; align-items: center; margin-right: 10px; color: var(--text-3); font-size: 12px; font-weight: 500; }
+/* 首帧下面那一排：左边“更多素材”，右边粘贴 / 从图库选（2026-11-04 从素材列表下面挪上来） */
+.vd-src-row { align-items: center; }
+.vd-xslot { gap: 4px; align-items: center; }
+.vd-xslot:empty { display: none; }
+.vd-xslot .btn svg { width: 14px; height: 14px; margin-right: 2px; }
+.vd-src-row .vx-addb { padding-left: 6px; }
+/* 2026-11-04 · 素材库选择、生视频的底模（手机上放在选项里，电脑上在标题栏）、按结构写 */
+.mats-path { gap: 4px; flex-wrap: wrap; margin-bottom: 10px; font-size: 13px; color: var(--text-3); }
+.mats-path .vd-link { font-size: 13px; }
+.mats-grid .ig-pick-t { position: relative; display: flex; align-items: center; justify-content: center; color: var(--text-3); }
+.mats-grid .ig-pick-t video, .mats-grid .ig-pick-t img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+.mats-grid .mats-dir { flex-direction: column; gap: 6px; }
+.mats-grid .mats-dir svg { width: 30px; height: 30px; }
+.mats-au svg { width: 30px; height: 30px; }
+.mats-n { position: absolute; left: 4px; right: 4px; bottom: 4px; padding: 1px 6px; border-radius: 6px; background: rgba(0, 0, 0, .6); color: #fff; font-size: 11px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; }
+.mats-grid .mats-dir .mats-n { position: static; background: none; color: var(--text-2); font-size: 12px; max-width: 100%; }
+/* 素材库 · 素材站整理来的姿势 / 衣服 / 脸：人像竖图，缩略图从上面对齐（不切掉头）；有封面的文件夹和文件一样显示 */
+.mats-grid .ig-pick-t img { object-position: center top; }
+.mats-grid .mats-dir.cov .mats-n { position: absolute; background: rgba(0, 0, 0, .6); color: #fff; font-size: 11px; max-width: none; }
+.mats-q { margin-bottom: 10px; }
+.mats-q .input { flex: 1; min-width: 0; }
+.vd-gbase-f[hidden] { display: none !important; }
+.vd-gbase-f .ve-base button { padding: 6px 2px; font-size: 12.5px; min-width: 0; }
+@media (min-width: 761px) { .vd-gbase-f { display: none !important; } }
+.vd-xslot { flex-wrap: wrap; }
+.vx-it .vx-sel { max-width: 46%; }
+.vx-c input[type=checkbox] { margin: 0 2px 0 0; }
+.ig-src.empty .vd-pick-in { position: absolute; right: 8px; bottom: 8px; display: flex; gap: 6px; }
+.ig-src.empty .vd-pick-in .btn { height: 26px; min-height: 0; padding: 0 10px; font-size: 12px; }
+/* 2026-11-04 · 素材库 · gallery（gallery.js）：选图弹窗和“素材库”页面共用一套。上面一行（库 / 搜索 / 筛选），第二行大类；细分类在右边一栏，可以收起（有动画；窄屏盖在图上）；只有框里的图片区滚动 */
+.mats-grid { padding: 3px; }  /* 选中的蓝框画在格子外面：留出位置，不被裁掉 */
+.modal.wide.gal-m { width: min(1680px, 94vw); height: 90vh; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; padding: 20px 22px 0; }
+.gal-head { gap: 8px; margin-bottom: 4px; flex: none; }
+.gal-note { margin-bottom: 4px; flex: none; font-size: 13px; color: var(--text-2); }
+.gal-host { flex: 1; min-height: 0; }
+.gal-root { display: flex; flex-direction: column; min-height: 0; }
+.gal-top { flex: none; display: flex; flex-direction: column; gap: 10px; padding: 8px 0 12px; border-bottom: 1px solid rgba(127, 127, 127, .18); }
+.gal-t1 { display: flex; align-items: center; gap: 10px; }
+.gal-tabs { flex: none; }
+.gal-lib { font-size: 15px; flex: none; }
+.gal-q { flex: 1; min-width: 0; max-width: 420px; }
+.gal-q .input { width: 100%; }
+.gal-t1 .btn svg { width: 16px; height: 16px; }
+.gal-t1 .btn { gap: 6px; flex: none; }
+.gal-fbtn.on { background: var(--blue-soft); color: var(--blue); }
+.gal-fbtn[hidden] { display: none; }
+.gal-fn { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--blue); color: #fff; font-size: 11px; line-height: 18px; text-align: center; box-sizing: border-box; }
+.gal-fn[hidden] { display: none; }
+.gal-t2 { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 26px; }
+.gal-chips.gal-topchips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; flex: 0 1 auto; min-width: 0; }
+.gal-topchips::-webkit-scrollbar { display: none; }
+.gal-path { margin: 0; min-width: 0; flex-wrap: wrap; color: var(--text-2); }
+.gal-tags { display: flex; gap: 6px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; min-width: 0; }
+.gal-tag { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; padding: 3px 6px 3px 10px; border-radius: 999px; font-size: 12.5px; line-height: 18px; white-space: nowrap; background: var(--blue-soft); color: var(--blue); font-weight: 500; }
+.gal-tag svg { width: 13px; height: 13px; }
+.gal-n { margin-left: auto; white-space: nowrap; flex: none; font-size: 12.5px; color: var(--text-2); }
+.gal-main { flex: 1; min-height: 0; display: flex; position: relative; overflow: hidden; }
+/* 右边的细分类：宽度从 0 展开（里面一层固定宽，展开时文字不跟着挤） */
+.gal-side { flex: none; width: 0; overflow: hidden; border-left: 1px solid transparent; opacity: 0; transition: width .26s cubic-bezier(.2, 0, 0, 1), opacity .2s ease, border-color .26s; }
+.gal-side-on .gal-side { width: 264px; opacity: 1; border-left-color: rgba(127, 127, 127, .18); }
+.gal-fold .gal-side { display: none; }
+.gal-side-in { width: 264px; height: 100%; box-sizing: border-box; overflow: auto; padding: 12px 2px 24px 18px; display: flex; flex-direction: column; gap: 16px; }
+.gal-noanim .gal-side, .gal-noanim .gal-scrim { transition: none !important; }
+.gal-sh { gap: 6px; }
+.gal-sh b { font-size: 13.5px; }
+.gal-row { display: flex; flex-direction: column; gap: 8px; }
+.gal-rn { font-size: 12.5px; font-weight: 600; color: var(--text-2); }
+.gal-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.gal-chip { all: unset; cursor: pointer; padding: 4px 11px; border-radius: 999px; font-size: 12.5px; line-height: 18px; color: var(--text); background: rgba(127, 127, 127, .15); white-space: nowrap; transition: background .15s, color .15s; }
+@media (hover: hover) { .gal-chip:not(.on):hover { background: rgba(127, 127, 127, .26); } }
+.gal-chip.on { background: var(--blue); color: #fff; }
+.gal-chip:focus-visible, .gal-tag:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+.gal-sk { width: 100%; margin: 0; }
+.gal-skl { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--text-2); }
+.gal-scrim { display: none; }
+.gal-body { flex: 1; min-width: 0; min-height: 0; overflow: auto; padding: 18px 4px 24px; }
+.gal-side-on:not(.gal-narrow):not(.gal-fold) .gal-body { padding-right: 20px; }
+.gal-detail .gal-top, .gal-detail .gal-side, .gal-detail .gal-scrim { display: none !important; }
+.gal-wait { padding: 30px 4px; font-size: 13px; color: var(--text-2); }
+/* 窄（小窗口 / 手机）：细分类从右边滑出来盖在图片上，点外面收起 */
+.gal-narrow .gal-side { position: absolute; z-index: 3; right: 0; top: 0; bottom: 0; width: min(320px, 86%) !important; opacity: 1; border: 0; border-radius: 14px 0 0 14px; background: #fff; box-shadow: -8px 0 30px rgba(0, 0, 0, .18);
+  transform: translateX(105%); transition: transform .26s cubic-bezier(.2, 0, 0, 1); }
+.gal-narrow.gal-side-on .gal-side { transform: none; }
+.gal-narrow .gal-side-in { width: 100%; padding: 14px 16px 20px; }
+html[data-theme="dark"] .gal-narrow .gal-side { background: #2c2c2f; }
+.gal-narrow .gal-scrim { display: block; position: absolute; inset: 0; z-index: 2; background: rgba(0, 0, 0, .3); opacity: 0; pointer-events: none; transition: opacity .26s; }
+.gal-narrow.gal-side-on .gal-scrim { opacity: 1; pointer-events: auto; }
+@media (prefers-reduced-motion: reduce) { .gal-side, .gal-scrim { transition: none !important; } }
+/* 卡片：宽一点、松一点，名字一行 */
+.gal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 26px 20px; }
+.gal-grid.gal-big { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.gal-card { cursor: pointer; border-radius: 12px; outline: none; min-width: 0; }
+.gal-im { position: relative; aspect-ratio: 3 / 4; border-radius: 12px; overflow: hidden; transition: box-shadow .15s; }
+.gal-im img, .gal-im video { width: 100%; height: 100%; object-fit: contain; display: block; pointer-events: none; }
+.gal-fim { background: rgba(127, 127, 127, .1); display: grid; place-items: center; color: var(--text-2); }
+.gal-fim > svg { width: 40px; height: 40px; }
+.gal-fim video { object-fit: cover; }
+.gal-au svg { width: 36px; height: 36px; }
+@media (hover: hover) { .gal-card:hover .gal-im { box-shadow: 0 0 0 2px var(--blue); } }
+.gal-card:focus-visible .gal-im { box-shadow: 0 0 0 2px var(--blue); }
+.gal-cap { margin-top: 8px; font-size: 13px; line-height: 1.4; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gal-badge { position: absolute; left: 8px; bottom: 8px; padding: 1px 7px; border-radius: 6px; background: rgba(0, 0, 0, .6); color: #fff; font-size: 11.5px; }
+.gal-zoom { all: unset; cursor: pointer; position: absolute; top: 8px; right: 8px; width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; background: rgba(0, 0, 0, .45); color: #fff; opacity: .9; }
+.gal-zoom svg { width: 17px; height: 17px; }
+@media (hover: hover) { .gal-zoom { opacity: 0; transition: opacity .15s; } .gal-card:hover .gal-zoom, .gal-zoom:focus-visible { opacity: 1; } .gal-zoom:hover { background: rgba(0, 0, 0, .7); } }
+/* 姿势线稿的底色：右边一栏的“线稿底色”滑块调（白 → 灰 → 深底浅线）；只是显示 */
+.sketch img { filter: var(--gal-sk, none); }
+.gal-dh { gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+.gal-dh .btn svg { width: 15px; height: 15px; }
+.gal-sub { font-size: 13px; color: var(--text-2); }
+.gal-more { display: flex; justify-content: center; padding: 18px 0 4px; }
+.gal-more[hidden] { display: none; }
+/* 素材库页面：整页不滚动，只有框里的图片区滚动；标题旁边是组合栏 */
+html:has(#main[data-page="mats"]), html:has(#main[data-page="mats"]) body { overflow: hidden; }
+.gal-ph { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.gal-tray { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.gal-tray-l { margin-right: 2px; font-size: 12.5px; color: var(--text-2); }
+.gal-slot { position: relative; width: 46px; height: 60px; border-radius: 8px; overflow: hidden; background: rgba(127, 127, 127, .1); display: grid; place-items: center; flex: none; }
+.gal-slot img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center top; }
+.gal-slot > span { position: absolute; left: 0; right: 0; bottom: 0; font-size: 10.5px; text-align: center; padding: 1px 0; background: rgba(0, 0, 0, .55); color: #fff; }
+.gal-slot.gal-empty { border: 1.5px dashed rgba(127, 127, 127, .45); background: none; }
+.gal-slot.gal-empty > span { position: static; background: none; color: var(--text-2); font-size: 11.5px; }
+.gal-slot-x { all: unset; cursor: pointer; position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; background: rgba(0, 0, 0, .6); color: #fff; }
+.gal-slot-x svg { width: 11px; height: 11px; }
+.card.gal-page { padding-top: 12px; padding-bottom: 0; overflow: hidden; display: flex; flex-direction: column; }
+/* 一张图的详情 / 视频、声音 */
+.modal.wide.gal-dm { width: min(1080px, 94vw); }
+.gal-dv { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 22px; margin-top: 10px; }
+.gal-dimg { display: grid; place-items: center; min-height: 0; }
+.gal-dimg img { max-width: 100%; max-height: 72vh; object-fit: contain; border-radius: 12px; display: block; }
+.gal-dside { display: flex; flex-direction: column; gap: 14px; }
+.gal-dang { display: flex; flex-wrap: wrap; gap: 6px; }
+.gal-dacts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.gal-dacts .btn { justify-content: center; }
+.gal-dacts [data-vid], .gal-dacts [data-src], .gal-dacts [data-zoom] { grid-column: span 2; }
+.gal-dacts .btn svg { width: 15px; height: 15px; }
+.gal-dhint { font-size: 12.5px; line-height: 1.5; color: var(--text-2); }
+.gal-media { margin-top: 10px; display: grid; place-items: center; }
+.gal-media video { max-width: 100%; max-height: 70vh; border-radius: 12px; background: #000; }
+.gal-media audio { width: 100%; }
+.gal-macts { justify-content: flex-end; margin-top: 14px; }
+.gal-short { display: none; }
+@media (max-width: 760px) {
+  .sidebar .nav a[data-page="mats"] { display: none !important; }
+  .gal-dv { grid-template-columns: minmax(0, 1fr); }
+  .gal-dimg img { max-height: 52vh; }
+}
+@media (max-width: 640px) {
+  .modal.wide.gal-m { width: 100vw; height: 100dvh; max-height: 100dvh; border-radius: 0; padding: calc(12px + env(safe-area-inset-top)) 12px 0; }
+  .gal-t1 { flex-wrap: wrap; gap: 8px; }
+  .gal-t1 .spacer { display: none; }
+  .gal-tabs { width: 100%; } .gal-tabs button { flex: 1; }
+  .gal-q { max-width: none; }
+  .gal-combo span, .gal-fbtn > span:not(.gal-fn) { display: none; }
+  .gal-t1 .btn { padding: 0 10px; }
+  .gal-grid, .gal-grid.gal-big { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 12px; }
+  .gal-body { padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+  .gal-tray { width: 100%; gap: 6px; }
+  .gal-ph { gap: 8px; }
+  .gal-slot { width: 36px; height: 46px; }
+  .gal-tray .btn.small { padding: 0 10px; }
+  .gal-top { gap: 8px; padding: 4px 0 10px; }
+  .gal-dimg img { max-height: 42vh; }
+  .gal-dv { gap: 14px; }
+  .gal-long { display: none; } .gal-short { display: inline; }
+}
+/* 2026-11-04 · 素材库第 3 版：大类是第二层标签（下划线文字，表示“现在在看哪一块”）；右边的细分类每组可以折叠、大组先显示一部分；衣服颜色带色点 */
+.gal-ctabs { display: flex; gap: 18px; overflow-x: auto; scrollbar-width: none; min-width: 0; flex: 0 1 auto; }
+.gal-ctabs::-webkit-scrollbar { display: none; }
+.gal-ctab { all: unset; cursor: pointer; padding: 3px 0 6px; font-size: 13.5px; line-height: 18px; color: var(--text-2); border-bottom: 2px solid transparent; white-space: nowrap; transition: color .15s, border-color .15s; }
+@media (hover: hover) { .gal-ctab:not(.on):hover { color: var(--text); } }
+.gal-ctab.on { color: var(--text); font-weight: 600; border-bottom-color: var(--blue); }
+.gal-ctab:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 4px; }
+.gal-t2 { align-items: flex-end; }
+.gal-t2 .gal-n, .gal-t2 .gal-tags { margin-bottom: 4px; }
+.gal-sh { flex: none; }
+.gal-scope { font-size: 12px; color: var(--text-2); margin-left: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.gal-side-in { gap: 14px; }
+.gal-grp { display: flex; flex-direction: column; }
+.gal-gh { all: unset; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 3px 2px 3px 0; border-radius: 6px; }
+.gal-gh:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.gal-gsel { font-size: 12px; color: var(--blue); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.gal-chev { width: 15px; height: 15px; flex: none; color: var(--text-2); transition: transform .2s; }
+.gal-grp.shut .gal-chev { transform: rotate(-90deg); }
+.gal-gb { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.gal-grp.shut .gal-gb { display: none; }
+@media (hover: hover) { .gal-gh:hover .gal-rn, .gal-gh:hover .gal-chev { color: var(--text); } }
+.gal-subh { font-size: 11.5px; color: var(--text-2); margin-top: 2px; }
+.gal-chip.gal-morec { background: none; color: var(--blue); padding-left: 6px; padding-right: 6px; }
+@media (hover: hover) { .gal-chip.gal-morec:hover { background: var(--blue-soft); } }
+.gal-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; box-shadow: inset 0 0 0 1px rgba(127, 127, 127, .55); }
+@media (max-width: 640px) { .gal-ctabs { gap: 14px; } }
+
+/* 2026-11-04 · 素材库“文件夹”：子文件夹的封面铺满整个卡片（不留边） */
+.gal-fd .gal-fim img { object-fit: cover; }
+
+/* 2026-11-04 · 生视频页第 5 轮整理（布局 / 播放） */
+/* “本次使用”并进底栏，排在选项按钮、AI 优化……后面（不再单独占一行，也不重复选项按钮 / 展开的参数里已有的分辨率 / 时长 / 声音）。放不下时自己换到下一行；改视频宽窗口时右边是收起参数 */
+.bar-l > .vd-sum { position: static; display: flex; align-items: center; flex: 1 1 max-content; min-width: 0; max-width: 100%; min-height: 32px; padding: 0 4px; font-size: 12px; color: var(--text-3); }
+.bar-l > .vd-sum > .vd-sum-t { min-width: 0; }  /* 整行放得下才排在按钮后面；放不下就整行换到下一行，再放不下才省略（鼠标停留看全文） */
+/* 查看完整提示词：固定在提示词框右下角。框总有 80px 以上高，右上角的清空按钮碰不到它，不用再往左让 36px */
+.ig-top-f .has-prompt-peek.pi-short > .prompt-peek { right: 6px; }
+.ig-top-f .has-prompt-peek.pi-short > textarea { padding-right: 38px !important; }
+/* 改视频：“模式”两个字去掉，三个按钮占满一行 */
+.field.ve-mode-f { grid-template-columns: minmax(0, 1fr); }
+.field.ve-mode-f > .label { display: none; }
+/* 本次生成 · 进行中的任务：限高、自己滚动，不挤下面的视频；多于一条时每条压成两行（标题 / 状态 · 参数） */
+#vd-live { max-height: min(32vh, 236px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.ig-gal-card > #vd-live { max-height: min(32vh, 236px); }
+@media (min-width: 1200px) { .ig-gal-card > #vd-live { max-height: min(24vh, 182px); } }  /* 宽窗口：约三条，大预览留得多一些 */
+#vd-live.many .ig-job { gap: 10px; padding: 8px 10px; margin: 0 0 6px; }
+#vd-live.many .ig-job:last-child { margin-bottom: 0; }
+#vd-live.many .ig-job-pv { width: 40px; height: 40px; border-radius: 9px; }
+#vd-live.many .ig-job-ic svg { width: 18px; height: 18px; }
+#vd-live.many .ig-job-ic { font-size: 16px; }
+#vd-live.many .ig-job-main { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+#vd-live.many .ig-job-t { flex: 1 1 100%; font-size: 13px; }
+#vd-live.many .ig-job-st { flex: 0 1 auto; min-width: 0; font-size: 12px; white-space: normal; }  /* 空间不够时换行（以前不换行，手机上状态文字和计时伸到“取消”按钮底下，2026-11-06） */
+#vd-live.many .ig-job-main > .tiny { order: 1; flex: 1 1 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#vd-live.many .ig-job.error .ig-job-st { flex: 1 1 100%; white-space: normal; }
+#vd-live.many .ig-job-main > .ig-bar { order: 2; flex: 1 1 100%; margin-top: 2px; }
+/* 大预览下面的缩略图：只排一横排、只左右滚动（不再两行、不再上下滚、不被切掉一截） */
+@media (min-width: 1200px) {
+  .ig-v2 .ig-gal-card > .vd-stage:not(:empty) + .vd-gal { display: flex; flex-wrap: nowrap; gap: 10px; max-height: none; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; padding: 2px 2px 8px; margin-top: 10px; scrollbar-width: thin; }
+  .ig-v2 .ig-gal-card > .vd-stage:not(:empty) + .vd-gal .vd-tile { flex: none; height: clamp(84px, 10.5vh, 128px); width: auto; aspect-ratio: 16 / 10; }
+}
+/* 缩略图上的播放图标：大预览正在播这一段时不显示 ▶，鼠标停上去显示暂停（点一下暂停 / 继续）；暂停、播完后显示 ▶ */
+.vd-play .vd-pz { display: none; margin: 0; }
+.vd-tile.playing .vd-play { opacity: 0; transition: opacity .15s; }
+@media (hover: hover) and (pointer: fine) {
+  .vd-tile.playing:hover .vd-play { opacity: 1; }
+  .vd-tile.playing .vd-play > svg:not(.vd-pz) { display: none; }
+  .vd-tile.playing .vd-play > .vd-pz { display: block; }
+}
+/* 改视频的参数（时长、分辨率、做法、要改衣的人、声音）：放得下时一项一行（名称在左、选项在右），不再“标题一行、按钮一行”层层堆叠；各项间距一致。
+   宽窗口看左栏的宽度，窄窗口看弹出的参数框（改视频时加宽到 460px）；内容不到 380px 宽（1366 宽的左栏、手机）时时长的拖动条会太短，仍上下排 */
+@media (min-width: 1200px) { .ig-v2.ve-on > .ig-top-f { container: vdleft / inline-size; } }
+@media (max-width: 1199px) { .ig-v2.ve-on .ig-panel:has(#vd-sec) { width: min(460px, calc(100vw - 32px)); container: vdleft / inline-size; } }
+.ig-v2.ve-on .ig-panel[data-o="4"] .ve-opts { gap: 14px; margin-top: 14px; }
+/* 2026-11-06 用户：标题在按钮上面（起分隔作用）；短的两项一行——改法 | 声音、参考图 | 加速（换人：做法 | 声音）。手机等窄的一列 */
+@container vdleft (min-width: 300px) {
+  .ig-panel[data-o="4"] .ve-opts { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px 14px; margin-top: 12px; align-items: start; }
+  .ig-panel[data-o="4"] .ve-opts > .ve-wide { grid-column: 1 / -1; }
+  .ig-panel[data-o="4"] .ig-2 { gap: 12px; }
+  .ve-ic svg { display: block !important; }
+  .ve-ic .vt { display: none; }
+}
+.ve-ic svg { display: none; width: 17px; height: 17px; }
+#ve-audio.ve-ic button { padding-left: 4px; padding-right: 4px; }
+
+/* LoRA 商店 · 我的下载（2026-11-04） */
+.cv-view { margin-left: 12px; }
+.cv-modal.cv-mine .cv-bar > :not(.cv-tsel) { display: none; }  /* 我的下载：只留“用于哪个模型” */
+.cv-modal.cv-mine #cv-key { display: none; }
+.cv-mine-h { margin: 0 0 10px; gap: 8px; }
+.cv-file { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .75; }
+.cv-one { max-width: 640px; margin-top: 8px; }
+.cv-one .cv-w { margin-top: 8px; }
+@media (max-width: 700px) { .cv-head { flex-wrap: wrap; row-gap: 8px; } .cv-view { margin-left: 0; order: 3; } }
+
+/* 竖屏的图片 / 视频（2026-11-04）：宽窗口里把缩略图挪到右边一列，画面用满整个高度（横屏不变） */
+@media (min-width: 1200px) {
+  .ig-v2 .ig-gal-card.port:has(> .vd-stage:not(:empty), > .ig-stage:not(:empty)) { display: grid; grid-template-columns: minmax(0, 1fr) clamp(190px, 24%, 300px); grid-template-rows: auto auto minmax(0, 1fr); column-gap: 14px; }
+  .ig-v2 .ig-gal-card.port > :first-child, .ig-v2 .ig-gal-card.port > #vd-live, .ig-v2 .ig-gal-card.port > #ig-live { grid-column: 1 / -1; }
+  .ig-v2 .ig-gal-card.port > .vd-stage:not(:empty), .ig-v2 .ig-gal-card.port > .ig-stage:not(:empty) { grid-column: 1; grid-row: 3; min-height: 0; }
+  .ig-v2 .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal, .ig-v2 .ig-gal-card.port > .ig-stage:not(:empty) + .ig-gal { grid-column: 2; grid-row: 3; display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; grid-auto-rows: max-content; align-content: start; max-height: none !important; min-height: 0; overflow-x: hidden !important; overflow-y: auto !important; margin-top: 12px; padding: 2px 2px 8px; }
+  .ig-v2 .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal .vd-tile { width: auto; height: auto !important; aspect-ratio: 3 / 4; }
+  .ig-v2 .ig-gal-card.port > .ig-stage:not(:empty) + .ig-gal > .ig-batch { grid-column: 1 / -1; }
+}
+/* 改视频 · 选段 */
+.ve-src-i { flex-wrap: wrap; row-gap: 4px; }
+.ve-seg-i { color: var(--blue); font-weight: 600; white-space: nowrap; }
+.ve-segb { height: 26px; padding: 0 9px; gap: 4px; }
+.ve-segb svg { width: 14px; height: 14px; }
+.modal.wide.vseg-m { width: min(1200px, 96vw); max-height: 94vh; }
+.vseg { display: flex; flex-direction: column; gap: 12px; }
+.vseg-v { display: grid; place-items: center; background: #000; border-radius: 12px; overflow: hidden; }
+.vseg-v video { display: block; max-width: 100%; max-height: calc(94vh - 330px); cursor: pointer; }
+.vseg.port { flex-direction: row; align-items: stretch; }
+.vseg.port .vseg-v { flex: none; }
+.vseg.port .vseg-v video { max-height: calc(94vh - 110px); max-width: min(56vw, 640px); }
+.vseg.port .vseg-c { flex: 1 1 auto; min-width: 280px; display: flex; flex-direction: column; justify-content: flex-end; }
+.vseg-track { position: relative; height: 34px; border-radius: 9px; background: rgba(127, 127, 127, .16); cursor: pointer; touch-action: none; }
+.vseg-track:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.vseg-rng { position: absolute; top: 0; bottom: 0; background: var(--blue-soft); box-shadow: inset 2px 0 0 var(--blue), inset -2px 0 0 var(--blue); border-radius: 6px; }
+.vseg-head { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--text); border-radius: 2px; pointer-events: none; }
+.vseg-head::before { content: ""; position: absolute; top: -3px; left: 50%; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: var(--text); }
+.vseg-tl { gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.vseg-tl .vseg-play { width: 38px; padding: 0 !important; justify-content: center; }
+.vseg-tl .vseg-play svg { width: 16px; height: 16px; }
+.vseg-t { margin-left: auto; font-variant-numeric: tabular-nums; }
+.vseg-rows { display: grid; gap: 8px; margin-top: 12px; }
+.vseg-row { display: flex; align-items: center; gap: 8px; }
+.vseg-row > span:first-child { width: 34px; font-weight: 600; }
+.vseg-row .input { width: 110px; height: 34px; font-variant-numeric: tabular-nums; }
+.vseg-len { margin-top: 10px; line-height: 1.6; }
+.vseg-act { margin-top: 12px; gap: 8px; }
+@media (max-width: 700px) {
+  .vseg.port { flex-direction: column; }
+  .vseg.port .vseg-v video, .vseg-v video { max-height: 46vh; max-width: 100%; }
+  .vseg.port .vseg-c { min-width: 0; }
+  .vseg-t { margin-left: 0; width: 100%; }
+}
+
+/* 原视频：细拖动条 + 设为开始 / 结束 + 拼接；右边原视频大画面（2026-11-04） */
+.ve-mini { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+.ve-mini .ve-trk { flex: 1 1 auto; min-width: 80px; height: 22px; border-radius: 7px; }
+.ve-mini .btn { height: 26px; padding: 0 9px; font-size: 12.5px; flex: none; }
+.ve-mini .chip { height: 26px; flex: none; gap: 4px; }
+.ve-spl svg { width: 14px; height: 14px; }
+.ve-spl.on { background: var(--blue-soft); color: var(--blue); box-shadow: inset 0 0 0 1px var(--blue); }
+.ve-seg-txt { color: var(--text-2); white-space: nowrap; }
+.vseg-v { position: relative; }
+/* 从白色标随便播（关掉“只放选段”）时：播到黄色框里，画面四周一圈淡黄色（video.js veSegUI） */
+.vseg-v::after { content: ''; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 3px rgba(255, 204, 0, .6), inset 0 0 18px rgba(255, 204, 0, .25); opacity: 0; transition: opacity .18s; pointer-events: none; z-index: 2; }
+.vseg-v.in-sel::after { opacity: 1; }
+.vseg-tl .vseg-only { flex: none; }
+.vseg-tag { position: absolute; left: 10px; top: 10px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #fff; background: rgba(0, 0, 0, .55); pointer-events: none; }
+.vseg-m .vseg-tag { display: none; }
+/* 右边大画面：占满整块（高度是确定的），竖屏左边画面、右边控件；横屏上面画面、下面控件 */
+.vseg-stage { position: relative; flex: 1 1 auto; min-height: 0; }
+.vseg-stage > .vseg { position: absolute; inset: 0; display: flex; gap: 14px; }
+.vseg-stage > .vseg:not(.port) { flex-direction: column; }
+.vseg-stage .vseg-v { min-height: 0; min-width: 0; display: flex; align-items: center; justify-content: center; }
+.vseg-stage > .vseg:not(.port) > .vseg-v { flex: 1 1 auto; }
+.vseg-stage .vseg-v video { display: block; max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
+.vseg-stage > .vseg:not(.port) .vseg-v video { width: 100%; height: 100%; }
+.vseg-stage > .vseg.port > .vseg-v { flex: 0 1 auto; height: 100%; aspect-ratio: var(--ar, 9 / 16); max-width: 62%; }
+.vseg-stage > .vseg.port .vseg-v video { width: 100%; height: 100%; }
+.vseg-stage > .vseg.port > .vseg-c { flex: 1 1 0; min-width: 260px; justify-content: flex-start; padding-top: 4px; overflow-y: auto; }
+.vseg-stage > .vseg:not(.port) > .vseg-c { flex: none; }
+.vseg-act .chip { gap: 5px; }
+/* 竖屏原视频在宽窗口：大画面已在右边，左边小框里不再挤一个很小的画面之外的东西 */
+/* 宽窗口：原视频那一格只叠一条细拖动条在底边（不增加高度；设为开始 / 结束、拼接在右边的大画面里）。窄窗口仍是视频下面一整行 */
+@media (min-width: 1200px) {
+  .ig-v2 #ve-src .ve-mini { position: absolute; left: 0; bottom: 0; width: calc(100% - var(--refw, 0px)); margin: 0; padding: 0 44px 9px 9px; box-sizing: border-box; pointer-events: none; }
+  .ig-v2 #ve-src .ve-mini > .btn, .ig-v2 #ve-src .ve-mini > .chip { display: none; }
+  .ig-v2 #ve-src .ve-mini .ve-trk { pointer-events: auto; height: 14px; border-radius: 5px; background: rgba(0, 0, 0, .5); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .18); }
+  .ig-v2 #ve-src .ve-mini .vseg-head { background: #fff; }
+  .ig-v2 #ve-src .ve-mini .vseg-head::before { width: 9px; height: 9px; margin-left: -4.5px; top: -2px; background: #fff; }
+}
+@media (max-width: 700px) { .ve-mini { flex-wrap: wrap; row-gap: 8px; } .ve-mini .ve-trk { flex-basis: 100%; height: 26px; } }  /* 手机：拖动条单独一整行，好拖 */
+
+/* 改视频 · 并排（宽窗口，2026-11-04 试用）：上一行两个画面一样高，下一行左边选段、右边成品按钮 */
+.vd-stage > .vd-dual { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; gap: 10px 14px; }
+.vd-dual > .vd-dual-src, .vd-dual > .vd-dual-src > .vseg-host, .vd-dual > .vd-dual-src .vseg, .vd-dual > .vd-dual-res { display: contents; }
+.vd-dual .vseg-v { grid-column: 1; grid-row: 1; min-height: 0; min-width: 0; display: flex; align-items: center; justify-content: center; background: #000; border-radius: 12px; overflow: hidden; }
+.vd-dual .vseg-v video { display: block; max-width: 100%; max-height: 100%; width: 100%; height: 100%; object-fit: contain; }
+.vd-dual .vseg-c { grid-column: 1; grid-row: 2; min-width: 0; }
+.vd-dual .vd-dual-v { grid-column: 2; grid-row: 1; position: relative; min-height: 0; min-width: 0; display: flex; align-items: center; justify-content: center; background: #000; border-radius: 12px; overflow: hidden; }
+.vd-dual .vd-dual-v > .vd-player { width: 100%; height: 100% !important; max-height: none; object-fit: contain; border-radius: 0; }
+.vd-dual .vd-dual-v .vseg-tag { z-index: 1; }
+.vd-dual .vd-dual-res > .vd-stage-bar { grid-column: 2; grid-row: 2; margin-top: 0; align-self: start; flex-wrap: wrap; row-gap: 6px; }
+.vd-dual .vd-dual-empty { flex-direction: column; gap: 8px; color: var(--text-3); background: rgba(127, 127, 127, .08); }
+.vd-dual .vd-dual-empty svg { width: 30px; height: 30px; opacity: .6; }
+.vd-dual .vseg-track { height: 26px; }
+.vd-dual .vseg-tl { margin-top: 8px; }
+.vseg-qk { gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.vseg-qk .ve-seg-txt { font-variant-numeric: tabular-nums; }
+.vseg-qk .chip { gap: 4px; }
+#vs-dual.on { background: var(--blue-soft); color: var(--blue); }
+/* 左边小框底下的拖动条：更细，鼠标停在原视频上才出现（宽窗口） */
+@media (min-width: 1200px) {
+  .ig-v2 #ve-src .ve-mini { padding: 0 44px 7px 9px; opacity: 0; transition: opacity .15s; }
+  .ig-v2 #ve-src .ve-mini .ve-trk { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .28); box-shadow: none; }
+  .ig-v2 #ve-src .ve-mini .vseg-rng { border-radius: 3px; background: rgba(64, 156, 255, .55); box-shadow: none; }
+  .ig-v2 #ve-src .ve-mini .vseg-head { top: -3px; bottom: -3px; width: 2px; }
+  .ig-v2 #ve-src .ve-mini .vseg-head::before { width: 8px; height: 8px; margin-left: -4px; top: 1px; }
+  .ig-v2 #ve-src:has(.ve-vid:hover) .ve-mini, .ig-v2 #ve-src .ve-mini:hover, .ig-v2 #ve-src .ve-mini:focus-within { opacity: 1; }
+  .ig-v2 #ve-src .ve-mini .ve-trk::after { content: ""; position: absolute; left: 0; right: 0; top: -7px; bottom: -7px; }
+}
+@media (min-width: 1200px) and (hover: none) { .ig-v2 #ve-src .ve-mini { opacity: 1; } }  /* 没有鼠标的设备：一直显示 */
+/* 并排 · 横屏原视频：上下两行（上原视频、下生成结果），各自的控件在右边一列，画面更大 */
+.vd-stage > .vd-dual.land { grid-template-columns: minmax(0, 1fr) clamp(240px, 30%, 330px); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
+.vd-dual.land .vseg-v { grid-column: 1; grid-row: 1; }
+.vd-dual.land .vseg-c { grid-column: 2; grid-row: 1; align-self: end; }
+.vd-dual.land .vd-dual-v { grid-column: 1; grid-row: 2; }
+.vd-dual.land .vd-dual-res > .vd-stage-bar { grid-column: 2; grid-row: 2; align-self: end; }
+
+/* 宽窗口改视频 · 竖屏原视频：原视频那一格变高（高度 --pth 由 vePortFit 按左栏剩下的空间算），参考图、片段、拖动条在右边一列 */
+@media (min-width: 1200px) {
+  .ig-v2 #ve-src.ptall:has(.ve-vid) { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr); column-gap: 12px; row-gap: 8px; align-items: start; }
+  .ig-v2 #ve-src.ptall:has(.ve-vid) > .vd-frames { display: contents; }
+  .ig-v2 #ve-src.ptall .ve-vid { grid-column: 1; grid-row: 1 / 4; height: var(--pth, 190px) !important; aspect-ratio: var(--var, 9 / 16); width: auto; min-height: 0 !important; margin: 0; padding: 0; border-radius: 12px; overflow: hidden; }
+  .ig-v2 #ve-src.ptall .ve-vid video { max-height: none !important; width: 100%; height: 100%; object-fit: contain; }
+  .ig-v2 #ve-src.ptall #ve-ref { grid-column: 2; grid-row: 1; width: 100%; height: clamp(84px, calc(var(--pth, 190px) * .4), 150px); min-height: 0 !important; }
+  .ig-v2 #ve-src.ptall .ve-src-i { grid-column: 2; grid-row: 2; position: static; max-width: none; margin: 0; justify-content: flex-start; flex-wrap: wrap; row-gap: 4px; }
+  .ig-v2 #ve-src.ptall .ve-mini { grid-column: 2; grid-row: 3; position: static; width: auto; padding: 0; opacity: 1; pointer-events: auto; flex-wrap: wrap; row-gap: 8px; align-self: start; margin: 0; }
+  .ig-v2 #ve-src.ptall .ve-mini > .btn, .ig-v2 #ve-src.ptall .ve-mini > .chip:not([hidden]) { display: inline-flex; }
+  .ig-v2 #ve-src.ptall .ve-mini .ve-trk { flex-basis: 100%; height: 22px; border-radius: 7px; background: rgba(127, 127, 127, .16); box-shadow: none; }
+  .ig-v2 #ve-src.ptall .ve-mini .ve-trk::after { display: none; }
+  .ig-v2 #ve-src.ptall .ve-mini .vseg-rng { border-radius: 6px; background: var(--blue-soft); box-shadow: inset 2px 0 0 var(--blue), inset -2px 0 0 var(--blue); }
+  .ig-v2 #ve-src.ptall .ve-mini .vseg-head { top: -4px; bottom: -4px; background: var(--text); }
+  .ig-v2 #ve-src.ptall .ve-mini .vseg-head::before { width: 12px; height: 12px; margin-left: -6px; top: -3px; background: var(--text); }
+}
+/* 竖屏原视频右边那一列要矮：不比原来的一行高（参考图矮一点、信息一行放不下就省略，选段按钮挪到下面那一行） */
+@media (min-width: 1200px) {
+  .ig-v2 #ve-src.ptall #ve-ref { height: clamp(64px, calc(var(--pth, 190px) - 126px), 150px); }
+  .ig-v2 #ve-src.ptall .ve-src-i { flex-wrap: nowrap; white-space: nowrap; overflow: hidden; }
+  .ig-v2 #ve-src.ptall .ve-src-i .ve-src-m { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .ig-v2 #ve-src.ptall .ve-src-i .ve-segb { order: 3; margin-left: auto; }
+  .ig-v2 #ve-src.ptall .ve-mini { row-gap: 6px; }
+}
+
+/* “最近生成”标题行的 并排 / 单个：只在改视频的宽窗口里显示 */
+.vd-dual-t { display: none; }
+@media (min-width: 1200px) { .ig-gal-card.vd-edit .vd-dual-t { display: inline-flex; } }
+.vd-dual-t button { padding: 0 12px; height: 28px; font-size: 13px; }
+.vd-dual .vd-dual-empty .tiny { opacity: .8; }
+
+/* 选段条（类似 Apple 剪辑）：胶片条 + 黄色框 + 两头把手 + 框外变暗 + 白色播放线（2026-11-04） */
+.vseg-track.vtrim { position: relative; height: 44px !important; border-radius: 9px !important; overflow: hidden; background: #26262b !important; box-shadow: none !important; cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; }
+.vtrim .vtrim-film { position: absolute; inset: 0; background-size: 100% 100%; background-repeat: no-repeat; }
+.vtrim:not(.has-film) .vtrim-film { background: repeating-linear-gradient(90deg, rgba(255, 255, 255, .05) 0 38px, rgba(255, 255, 255, .02) 38px 40px); }
+.vseg-track.vtrim .vseg-rng { position: absolute; top: 0 !important; bottom: 0 !important; box-sizing: border-box; min-width: 26px; border: 3px solid #ffcc00 !important; border-left-width: 13px !important; border-right-width: 13px !important; border-radius: 8px !important; background: transparent !important; box-shadow: 0 0 0 9999px rgba(0, 0, 0, .55) !important; }
+.vtrim .vtrim-h { position: absolute; top: -3px; bottom: -3px; width: 13px; cursor: ew-resize; }
+.vtrim .vtrim-h.a { left: -13px; } .vtrim .vtrim-h.b { right: -13px; }
+.vtrim .vtrim-h::before { content: ""; position: absolute; left: 50%; top: 50%; width: 3px; height: 14px; margin: -7px 0 0 -1.5px; border-radius: 2px; background: rgba(0, 0, 0, .6); }
+.vseg-track.vtrim .vseg-head { position: absolute; top: -1px !important; bottom: -1px !important; width: 3px !important; margin-left: -1.5px; border-radius: 2px; background: #fff !important; box-shadow: 0 0 0 .5px rgba(0, 0, 0, .3), 0 0 6px rgba(0, 0, 0, .55); pointer-events: none; z-index: 2; }
+.vseg-track.vtrim .vseg-head::before { display: none !important; }
+.vseg-track.vtrim:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.ve-mini .vseg-track.vtrim { height: 38px !important; }
+/* 宽窗口、普通排法：原视频格子底边那一条仍是细细的一条（只拖动看画面，鼠标停上才出现） */
+@media (min-width: 1200px) {
+  .ig-v2 #ve-src:not(.ptall) .ve-mini .vseg-track.vtrim { height: 6px !important; border-radius: 3px !important; overflow: visible; background: rgba(255, 255, 255, .28) !important; }
+  .ig-v2 #ve-src:not(.ptall) .ve-mini .vtrim .vtrim-film, .ig-v2 #ve-src:not(.ptall) .ve-mini .vtrim .vtrim-h { display: none; }
+  .ig-v2 #ve-src:not(.ptall) .ve-mini .vseg-track.vtrim .vseg-rng { border: 0 !important; min-width: 0; border-radius: 3px !important; background: rgba(255, 204, 0, .75) !important; box-shadow: none !important; }
+  .ig-v2 #ve-src:not(.ptall) .ve-mini .vseg-track.vtrim .vseg-head { top: -4px !important; bottom: -4px !important; }
+}
+/* 并排（对比播放器）：占满右边那一块 */
+.vd-stage > .vd-ab { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.vd-ab-empty { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--text-3); background: rgba(127, 127, 127, .08); border-radius: 12px; }
+.vd-ab-empty svg { width: 32px; height: 32px; opacity: .6; }
+.vd-stage > .vd-ab + .vd-stage-bar { flex-wrap: wrap; row-gap: 6px; }
+/* 并排：成品按钮一行放下（信息文字省略，放不下时按钮只留图标）；播放条一行 */
+.vd-stage > .vd-ab + .vd-stage-bar { flex-wrap: nowrap !important; }
+.vd-stage > .vd-ab + .vd-stage-bar .vd-stage-i { flex: 1 1 0; }
+.ab-inline .ab-ctl { flex-wrap: nowrap; gap: 8px; }
+.ab-inline .ab-ctl .seg button { padding: 0 10px; }
+/* 2026-11-10 用户截图：窄的时候“并排 / 滑动”“原视频 / 成品 / 静音”被挤成一个字一行。按钮组不缩、字不折行，先缩进度条；还放不下就整组换到下一行 */
+.ab-ctl .seg { flex: none; }
+.ab-ctl .seg button { white-space: nowrap; }
+.ab-inline .ab-ctl { flex-wrap: wrap; row-gap: 6px; }
+.ab-inline .ab-ctl .ab-bar { min-width: 80px; }
+/* 防窥模式：选段条底下的画面（胶片条）也遮住，鼠标停在条上（或正在拖）时才显示；弹窗里照常显示 */
+body.guard .vtrim-film { filter: brightness(0); transition: filter .2s; }
+body.guard .vtrim:hover .vtrim-film, body.guard .vtrim.drag .vtrim-film { filter: none; transition-delay: .9s; }
+body.guard .vtrim.drag .vtrim-film { transition-delay: 0s; }
+body.guard .modal-bg .vtrim-film { filter: none !important; }
+
+/* 宽窗口生视频（不含改视频）：首帧图在左、右边一列放尾帧 / 素材按钮 / 模型；图的高度由 vdSrcFit 按左栏剩下的空间算（2026-11-05） */
+@media (min-width: 1200px) {
+  .ig-v2 #vd-src.vd-side-on .vd-frames { align-items: flex-start; min-height: 0; gap: 14px; }
+  .ig-v2 #vd-src.vd-side-on .vd-frames > .ig-src { flex: none; max-width: 56%; }
+  .ig-v2 #vd-src.vd-side-on .vd-frames > .ig-src img { max-height: var(--vdh, 300px) !important; width: auto; max-width: 100%; }
+  .ig-v2 #vd-src.vd-side-on .vd-side { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+  .ig-v2 #vd-src.vd-side-on .vd-side > .field { margin: 0; }
+  .ig-v2 #vd-src.vd-side-on .vd-side .vd-f2 { width: 96px; height: 96px; min-height: 0; align-self: flex-start; }
+  .ig-v2 #vd-src.vd-side-on .vd-side .vd-src-i { margin-top: 0; }
+  .ig-v2 #vd-src.vd-side-on .vd-side .vd-src-row { flex-wrap: wrap; justify-content: flex-start; margin-top: 0; }
+  .ig-v2 #vd-src.vd-side-on .vd-side .vd-src-row .spacer { display: none; }
+  .ig-v2 #vd-src.vd-side-on .vd-side .vd-xslot { flex-wrap: wrap; }
+  .ig-grid.ig-v2:has(#vd-src.vd-side-on) { grid-template-columns: minmax(460px, 40%) minmax(0, 1fr); }
+}
+@media (min-width: 1200px) {
+  .ig-v2 #vd-src.vd-side-on .vd-side .vd-model button { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12.5px; padding-left: 6px; padding-right: 6px; }
+  .ig-v2 #vd-src.vd-side-on .vd-side .vd-f2 { width: 80px; height: 80px; padding: 6px !important; }
+  .ig-v2 #vd-src.vd-side-on .vd-side #vd-model-d:empty { display: none; }
+}
+/* ===== 2026-11-05：右侧 剪辑 / 成品 / 对比 / 全部视频；剪辑区竖屏、横屏两种排法 ===== */
+.vd-dual-t button { padding: 0 14px; }
+.vd-dual-t button:disabled { opacity: .4; cursor: not-allowed; }
+.btn.vd-allb.on, html[data-theme] .btn.ghost.vd-allb.on { background: var(--blue-soft); color: var(--blue); }
+/* 大画面右上角的 ×（同生图页）：关掉后平铺显示全部视频 */
+@media (min-width: 1200px) {
+  .ig-v2 .vd-stage:not(:empty) { position: relative; }
+  .vd-stage > .vd-x { top: 10px; right: 10px; }
+  .vd-stage:hover > .vd-x { opacity: 1; }
+}
+.vd-stage > .vd-empty { flex: 1 1 auto; }
+/* 全部视频：等高平铺，竖的显示成竖的 */
+.vd-gal.ig-all { display: block !important; flex: 1 1 auto !important; max-height: none !important; overflow-y: auto !important; overflow-x: hidden !important; padding: 10px 4px 18px; margin-top: 4px; }
+.vd-ju { cursor: pointer; }
+.vd-ju .vd-noth { display: grid; place-items: center; width: 100%; height: 100%; color: var(--text-3); }
+.vd-ju .vd-noth svg { width: 28px; height: 28px; }
+.vd-ju-p { position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%; display: grid; place-items: center; background: rgba(0, 0, 0, .45); color: #fff; opacity: 0; transition: opacity .2s; pointer-events: none; }
+.vd-ju-p svg { width: 18px; height: 18px; }
+.vd-ju:hover .vd-ju-p, .vd-ju:focus-visible .vd-ju-p { opacity: 1; }
+/* 缩略图：高度一致、宽度按视频比例（限制在 3:4 – 16:10，不会出现特别窄的一条）；竖屏排法里宽度一致、高度按比例 */
+@media (min-width: 1200px) {
+  .ig-v2 .ig-gal-card > .vd-stage:not(:empty) + .vd-gal .vd-tile { aspect-ratio: var(--tar, 1.6); }
+  .ig-v2 .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal.mason { grid-auto-rows: 4px; row-gap: 0; column-gap: 10px; grid-auto-flow: row dense; }
+  .ig-v2 .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal.mason .vd-tile { aspect-ratio: var(--tar, 1.6); align-self: start; margin-bottom: 10px; }
+}
+/* 左边原视频：右侧正在剪辑时只留一行（更换 / 移除），人物图框变宽 */
+.ve-src-c { display: none; }
+@media (min-width: 1200px) {
+  .ig-v2 #ve-src.onstage > .ve-src-c { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px 6px 6px 12px; margin-bottom: 8px; border-radius: 12px; background: rgba(127, 127, 127, .1); }
+  .ve-src-c > svg { width: 16px; height: 16px; flex: none; color: var(--text-2); }
+  .ve-src-c > b { font-size: 13px; flex: none; }
+  .ve-src-c > .ve-src-c-m { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .ve-src-c > .ve-seg-txt { color: var(--blue); white-space: nowrap; flex: none; }
+  .ve-src-c > .ve-src-c-h { color: var(--text-3); white-space: nowrap; flex: none; }
+  .ve-src-c > .btn { height: 26px; padding: 0 10px; flex: none; }
+  .ve-src-c > .pl-ib { flex: none; }
+  .ig-v2 #ve-src.onstage .ve-vid, .ig-v2 #ve-src.onstage > .ve-src-i, .ig-v2 #ve-src.onstage > .ve-mini { display: none !important; }
+  .ig-v2 #ve-src.onstage #ve-ref { flex: 1 1 auto; width: auto; height: 132px; min-height: 0; }
+  .ig-v2 #ve-src.onstage #ve-ref img { object-fit: contain; }
+}
+@container vdleft (max-width: 470px) { .ve-src-c > .ve-src-c-h { display: none; } }
+/* 右侧剪辑：共用 */
+.vseg-stage > .vseg.st { position: absolute; inset: 0; display: flex; gap: 14px; }
+.vseg.st > .vseg-v { min-width: 0; min-height: 0; display: flex; align-items: center; justify-content: center; background: #000; border-radius: 12px; overflow: hidden; }
+.vseg.st > .vseg-v video, .vseg-stage > .vseg.st .vseg-v video { width: 100%; height: 100%; max-width: none; max-height: none; object-fit: contain; }
+.vseg.st .vseg-p { min-width: 0; }
+.vseg.st .vseg-t { margin: 0; font-variant-numeric: tabular-nums; color: var(--text-3); font-size: 13px; white-space: nowrap; }
+.vseg.st .vseg-t b { color: var(--text); font-size: 17px; font-weight: 600; margin-right: 2px; }
+.vseg.st .vseg-tl { margin: 0; gap: 4px; flex-wrap: nowrap; justify-content: center; }
+.vseg.st .vseg-rows { margin: 0; }
+.vseg.st .vseg-row { gap: 8px; }
+.vseg.st .vseg-row > span:first-child { width: auto; color: var(--text-2); font-weight: 600; }
+.vseg.st .vseg-row .input { width: 92px; height: 32px; }
+.vseg.st .vseg-len { margin: 0; color: var(--text-3); line-height: 1.55; }
+.vseg.st .vseg-act { margin: 0; gap: 8px; }
+/* 竖屏原视频：左边画面，右边一栏（选段条、播放、开始 / 结束），整体居中 */
+.vseg.st.port { flex-direction: row; justify-content: center; align-items: stretch; }
+.vseg.st.port > .vseg-v { flex: 0 1 auto; height: 100%; aspect-ratio: var(--ar, 9 / 16); max-width: calc(100% - 300px); }
+.vseg.st.port > .vseg-side { flex: 1 1 0; min-width: 270px; max-width: 520px; display: flex; flex-direction: column; justify-content: center; gap: 16px; padding: 0 4px; }
+.vseg.st.port .vseg-p { display: flex; flex-direction: column; gap: 14px; }
+.vseg.st.port .vseg-t { text-align: center; }
+.vseg.st.port .vseg-rows { display: grid; gap: 8px; padding: 12px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.vseg.st.port .vseg-row { justify-content: center; }
+.vseg.st.port .vseg-act { justify-content: center; flex-wrap: wrap; }
+.vseg.st.port .vseg-len { text-align: center; }
+/* 横屏原视频：上面画面，中间选段条，下面一栏居中（左时间、中播放、右整段 / 拼接；第二行开始 / 结束） */
+.vseg.st.land { flex-direction: column; }
+.vseg.st.land > .vseg-v { flex: 1 1 auto; }
+.vseg.st.land > .vseg-trw, .vseg.st.land > .vseg-p { flex: none; }
+.vseg.st.land .vseg-p { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 10px 16px; }
+.vseg.st.land .vseg-t { grid-column: 1; grid-row: 1; justify-self: start; }
+.vseg.st.land .vseg-tl { grid-column: 2; grid-row: 1; }
+.vseg.st.land .vseg-act { grid-column: 3; grid-row: 1; justify-self: end; flex-wrap: nowrap; }
+.vseg.st.land .vseg-rows { grid-column: 1 / -1; grid-row: 2; display: flex; justify-content: center; flex-wrap: wrap; gap: 8px 32px; }
+.vseg.st.land .vseg-len { grid-column: 1 / -1; grid-row: 3; text-align: center; }
+/* 选段条：黄色框变细（不遮画面），胶片条每帧按原比例 */
+.vseg-track.vtrim { height: 40px !important; border-radius: 8px !important; }
+.vseg-track.vtrim .vseg-rng { min-width: 20px; border-width: 2px 10px !important; border-radius: 7px !important; box-shadow: 0 0 0 9999px rgba(0, 0, 0, .5) !important; }
+.vtrim .vtrim-h { width: 10px; top: -2px; bottom: -2px; }
+.vtrim .vtrim-h.a { left: -10px; } .vtrim .vtrim-h.b { right: -10px; }
+.vtrim .vtrim-h::before { width: 2px; height: 12px; margin: -6px 0 0 -1px; background: rgba(0, 0, 0, .55); }
+.vtrim .vtrim-h::after { content: ""; position: absolute; top: 0; bottom: 0; left: -6px; right: -6px; }
+.vtrim .vtrim-film { background-size: auto 100% !important; background-repeat: no-repeat !important; background-position: left center; }
+.ve-mini .vseg-track.vtrim { height: 34px !important; }
+.vseg-track.vtrim .vseg-head { width: 2px !important; margin-left: -1px; }
+/* 防窥模式：全部视频 / 全部图片的平铺也遮住 */
+body.guard .ig-ju img { filter: brightness(0); transition: filter .2s; }
+body.guard .ig-ju:hover img { filter: none; transition-delay: .9s; }
+/* 右侧不够宽（小窗口）：竖屏原视频也上下排（画面在上、控制栏在下），控件排紧凑，不把画面挤成一条 */
+.vseg-stage { container: vsegst / inline-size; }
+@container vsegst (max-width: 640px) {
+  .vseg.st.port { flex-direction: column; gap: 10px; }
+  .vseg.st.port > .vseg-v { flex: 1 1 auto; height: auto; max-width: none; aspect-ratio: auto; }
+  .vseg.st.port > .vseg-side { flex: none; min-width: 0; max-width: none; gap: 8px; padding: 0; }
+  .vseg.st.port .vseg-rows { padding: 0; border: 0; }
+}
+@container vsegst (max-width: 760px) {
+  .vseg.st.land { gap: 10px; }
+  .vseg.st.land .vseg-p { display: grid !important; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px 12px; }
+  .vseg.st.land .vseg-tl { grid-column: 1; grid-row: 1; justify-content: flex-start; }
+  .vseg.st.land .vseg-t { grid-column: 2; grid-row: 1; justify-self: end; text-align: right; }
+  .vseg.st.land .vseg-rows { grid-column: 1 / -1; grid-row: 2; display: flex !important; flex-wrap: wrap; justify-content: center; gap: 6px 18px; }
+  .vseg.st.land .vseg-row .input { width: 72px; }
+  .vseg.st.land .vseg-act { grid-column: 1 / -1; grid-row: 3; justify-self: center; flex-wrap: nowrap; }
+  .vseg.st.land .vseg-len { display: none; }
+}
+@container vsegst (max-width: 640px) {
+  .vseg.st .vseg-p { display: grid !important; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px 12px; }
+  .vseg.st .vseg-tl { grid-column: 1; grid-row: 1; justify-content: flex-start; }
+  .vseg.st .vseg-t { grid-column: 2; grid-row: 1; justify-self: end; text-align: right; }
+  .vseg.st .vseg-rows { grid-column: 1 / -1; grid-row: 2; display: flex !important; flex-wrap: wrap; justify-content: center; gap: 6px 18px; }
+  .vseg.st .vseg-row .input { width: 72px; }
+  .vseg.st .vseg-act { grid-column: 1 / -1; grid-row: 3; justify-self: center; flex-wrap: nowrap; }
+  .vseg.st .vseg-len { display: none; }
+}
+/* 缩略图位置按钮：只在宽窗口、显示大画面时出现 */
+.gal-lay { width: 30px; height: 30px; color: var(--text-2); }
+.gal-lay svg { width: 17px; height: 17px; }
+@media (max-width: 1199px) { .gal-lay { display: none !important; } }
+.ig-gal-card:has(> .ig-all) .gal-lay { display: none; }
+/* 收起缩略图：大画面用满整块 */
+.ig-gal-card.gal-fold > .vd-stage:not(:empty) + .vd-gal, .ig-gal-card.gal-fold > .ig-stage:not(:empty) + .ig-gal { display: none !important; }
+.gal-fb[aria-pressed="true"] { color: var(--blue); }
+.gal-lay[hidden] { display: none !important; }
+
+/* 素材库文件夹：排序、@标签筛选（2026-11-05） */
+.gal-fopts { gap: 6px; align-items: center; flex-wrap: wrap; }
+.gal-fo { gap: 5px; }
+.gal-fo svg { width: 15px; height: 15px; }
+.gal-at { font-size: 13px; line-height: 1; }
+.gal-ftag-on { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gal-tp-h { gap: 8px; align-items: center; margin: 4px 0 8px; padding-right: 24px; }
+.gal-tp-h .input { flex: 1 1 auto; min-width: 0; height: 32px; }
+.gal-tp-l { max-height: min(56vh, 460px); overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+.gal-tp-i { all: unset; box-sizing: border-box; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 8px; cursor: pointer; }
+.gal-tp-i:hover { background: rgba(127, 127, 127, .14); }
+.gal-tp-i.on { background: rgba(80, 140, 255, .18); }
+.gal-tp-i > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 文件夹的路径行：放不下时换行（路径一行、排序 / 标签一行），路径别被挤成竖排 */
+.gal-fold .gal-t2 { flex-wrap: wrap; row-gap: 6px; }
+.gal-fold .gal-t2 .gal-path { flex: 0 1 auto; min-width: 120px; flex-wrap: wrap; }
+@media (max-width: 760px) { .gal-fold .gal-t2 .gal-path { flex-basis: 100%; } .gal-fold .gal-t2 .gal-fopts { flex: 1 1 auto; } }
+
+/* 拼接片段（已拼接回原视频的那一小段成品）：标题栏的小图标，默认不显示这些片段；打开时图标变蓝（2026-11-05） */
+.vd-pcs { width: 30px; height: 30px; color: var(--text-2); }
+.vd-pcs svg { width: 17px; height: 17px; }
+.vd-pcs[aria-pressed="true"] { color: var(--blue); }
+.vd-pcs[hidden] { display: none !important; }
+
+/* 缩略图上的播放图标：平时不显示（不挡画面），鼠标移上去才出现；手机上不显示（点缩略图就播放）（2026-11-05 用户要求） */
+.vd-tile .vd-play { opacity: 0; transition: opacity .15s, transform .15s, background .15s; }
+@media (hover: hover) and (pointer: fine) { .vd-tile:hover .vd-play, .vd-tile:focus-visible .vd-play { opacity: 1; } }
+
+/* 任务进度条（标题栏中间）：有任务时才出现；点击展开 / 收起上方的任务列表；鼠标停留弹出任务卡片（2026-11-05） */
+.vd-jp { position: relative; flex: 0 1 auto; min-width: 0; display: inline-flex; align-items: center; gap: 7px; height: 28px; padding: 0 8px 0 10px; margin: 0 10px; border-radius: 980px;
+  background: rgba(127, 127, 127, .12); color: var(--text-2); font-size: 12px; white-space: nowrap; cursor: pointer; user-select: none; transition: background .15s, color .15s; }
+.vd-jp[hidden] { display: none !important; }
+.vd-jp-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--blue); animation: vdjp 1.4s ease-in-out infinite; }
+.vd-jp.err .vd-jp-dot { background: var(--red); animation: none; }
+@keyframes vdjp { 50% { opacity: .35; } }
+.vd-jp-t { color: var(--text); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; }
+.vd-jp.err .vd-jp-t { color: var(--red); }
+.vd-jp-bar { flex: none; width: 64px; height: 4px; border-radius: 4px; background: rgba(127, 127, 127, .25); overflow: hidden; }
+.vd-jp-bar > i { display: block; height: 100%; border-radius: inherit; background: var(--blue); transition: width .4s; }
+.vd-jp-n { flex: none; padding: 0 6px; height: 18px; line-height: 18px; border-radius: 9px; background: rgba(127, 127, 127, .18); color: var(--text-2); font-size: 11px; font-variant-numeric: tabular-nums; }
+.vd-jp-n.e { background: color-mix(in srgb, var(--red) 16%, transparent); color: var(--red); }
+.vd-jp-ch { flex: none; width: 13px; height: 13px; color: var(--text-3); }
+.vd-jp:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+/* 弹出的任务卡片 */
+.vd-jp-pop { position: absolute; top: calc(100% + 8px); left: 50%; z-index: 40; width: 340px; max-width: min(340px, 80vw); max-height: 360px; overflow-y: auto; padding: 12px;
+  border-radius: 14px; background: rgba(255, 255, 255, .96); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); border: 1px solid var(--line); box-shadow: 0 12px 36px rgba(0, 0, 0, .18); color: var(--text); white-space: normal; cursor: default;
+  opacity: 0; visibility: hidden; transform: translate(-50%, -4px); transition: opacity .15s, transform .15s, visibility .15s; }
+.vd-jp-h { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.vd-jp-h b { font-size: 13px; }
+.vd-jp-r { padding: 8px 10px; border-radius: 10px; background: rgba(127, 127, 127, .08); }
+.vd-jp-r + .vd-jp-r { margin-top: 6px; }
+.vd-jp-rt { display: flex; align-items: baseline; gap: 8px; }
+.vd-jp-rt b { flex: 1 1 auto; min-width: 0; font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vd-jp-rt span { flex: none; font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.vd-jp-r.running .vd-jp-rt span { color: var(--blue); }
+.vd-jp-r.error .vd-jp-rt span, .vd-jp-r.error .vd-jp-rs { color: var(--red); }
+.vd-jp-rs { margin-top: 2px; display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vd-jp-r .ig-bar { margin-top: 6px; }
+.vd-jp-f { margin-top: 8px; text-align: center; color: var(--text-3); }
+@media (hover: hover) and (pointer: fine) {
+  .vd-jp:hover { background: rgba(127, 127, 127, .2); }
+  .vd-jp.folded:hover .vd-jp-pop, .vd-jp.folded:focus-visible .vd-jp-pop { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+}
+.vd-jp-pop::before { content: ""; position: absolute; left: 0; right: 0; top: -10px; height: 10px; }  /* 从进度条移到卡片上时不断开 */
+@media (max-width: 1199px) { .vd-jp-bar { width: 44px; } }
+@media (max-width: 640px) { .vd-jp { margin: 0 6px; } .vd-jp-bar, .vd-jp-n { display: none; } }
+html[data-theme="dark"] .vd-jp-pop { background: rgba(38, 38, 42, .96); border-color: var(--line-2); box-shadow: 0 16px 40px rgba(0, 0, 0, .5); }
+@media (max-width: 1499px) { .vd-jp-w { display: none; } .vd-jp { gap: 6px; margin: 0 8px; } .vd-jp-bar { width: 40px; } }
+@media (max-width: 1499px) { .vd-jp-ch { display: none; } .vd-jp { gap: 4px; padding: 0 8px; } }
+@media (max-width: 1499px) { .vd-jp { margin: 0; } .vd-jp-bar { display: none; } }
+@media not ((hover: hover) and (pointer: fine)) { .vd-tile .vd-play { pointer-events: none; } }  /* 手机上看不见这个 ▶：点到它也只算点缩略图 */
+
+/* 缩略图位置 / 收起 / 拼接片段 三个小图标：鼠标停上去的动画（2026-11-05） */
+.gal-lay .gl-p { fill: currentColor; fill-opacity: .3; stroke: none; transition: x .32s cubic-bezier(.3, .7, .2, 1), y .32s cubic-bezier(.3, .7, .2, 1), width .32s cubic-bezier(.3, .7, .2, 1), height .32s cubic-bezier(.3, .7, .2, 1); }
+.gal-lay[data-l="row"] .gl-p { x: 3.5px; y: 13.5px; width: 17px; height: 6px; }
+.gal-lay[data-l="col"] .gl-p { x: 14px; y: 4.5px; width: 6.5px; height: 15px; }
+.gal-fb svg, .vd-pcs svg rect, .vd-pcs svg path { transition: transform .25s cubic-bezier(.3, .7, .2, 1); }
+@media (hover: hover) and (pointer: fine) {
+  .gal-lay[data-l="row"]:hover .gl-p { x: 14px; y: 4.5px; width: 6.5px; height: 15px; }  /* 下方 → 右侧 */
+  .gal-lay[data-l="col"]:hover .gl-p { x: 3.5px; y: 13.5px; width: 17px; height: 6px; }  /* 右侧 → 下方 */
+  .gal-fb[data-d="down"]:hover svg { transform: translateY(2px); } .gal-fb[data-d="up"]:hover svg { transform: translateY(-2px); }
+  .gal-fb[data-d="right"]:hover svg { transform: translateX(2px); } .gal-fb[data-d="left"]:hover svg { transform: translateX(-2px); }
+  .vd-pcs:hover svg rect:first-of-type { transform: translateX(1.5px); } .vd-pcs:hover svg rect:last-of-type { transform: translateX(-1.5px); }
+}
+@media (prefers-reduced-motion: reduce) { .gal-lay .gl-p, .gal-fb svg, .vd-pcs svg rect { transition: none; } }
+/* 生视频（不含改视频）还没放首帧：空框矮一点（和改视频一样），宽窗口左栏不用滚动 */
+@media (min-width: 1200px) {
+  .ig-v2 #vd-src:not(.vd-side-on) .vd-frames, .ig-v2 #vd-src:not(.vd-side-on) .vd-frames > .ig-src.empty, .ig-v2 #vd-src:not(.vd-side-on) .vd-f2 { min-height: 116px; }
+  .ig-v2 #vd-src:not(.vd-side-on) .vd-frames > .ig-src.empty, .ig-v2 #vd-src:not(.vd-side-on) .vd-f2 { padding: 8px; gap: 6px; }
+}
+
+/* 多段拼接：选要一起拼回原视频的几段 */
+.vsp-m { width: min(520px, 92vw); }
+.vsp-note { color: var(--text-3); line-height: 1.6; margin-bottom: 10px; }
+.vsp-list { display: flex; flex-direction: column; gap: 6px; max-height: 52vh; overflow-y: auto; }
+.vsp-row { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 12px; background: rgba(127, 127, 127, .08); cursor: pointer; }
+.vsp-row input { width: 16px; height: 16px; accent-color: var(--blue); flex: none; }
+.vsp-row.off { opacity: .45; cursor: not-allowed; }
+.vsp-th { flex: none; width: 56px; height: 40px; border-radius: 8px; overflow: hidden; background: #000; display: grid; place-items: center; color: var(--text-3); }
+.vsp-th img { width: 100%; height: 100%; object-fit: cover; } .vsp-th svg { width: 18px; height: 18px; }
+.vsp-t { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; } .vsp-t b { font-size: 13px; font-variant-numeric: tabular-nums; } .vsp-t .tiny { color: var(--text-3); }
+.vsp-ov { flex: none; font-style: normal; color: var(--text-3); }
+
+/* 修剪视频（vtrim.js） */
+.vt-m { width: min(960px, 94vw); }
+.vt-v { display: flex; justify-content: center; background: #000; border-radius: 12px; overflow: hidden; }
+.vt-v video { display: block; max-width: 100%; max-height: 54vh; cursor: pointer; }
+.vt-track { margin-top: 12px; }
+.vt-track .vt-cuts { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+.vt-track .vt-cuts i { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(45deg, rgba(255, 69, 58, .6) 0 6px, rgba(255, 69, 58, .32) 6px 12px); }
+.vt-track .vseg-rng { z-index: 2; } .vt-track .vseg-head { z-index: 3; }
+.vt-ctl, .vt-sel { gap: 6px; margin-top: 10px; align-items: center; flex-wrap: wrap; }
+.vt-t, .vt-sel-t { font-variant-numeric: tabular-nums; color: var(--text-2); } .vt-t b { color: var(--text); font-size: 14px; }
+.vt-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; min-height: 28px; align-items: center; }
+.vt-cut { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px 2px 10px; border-radius: 999px; font-size: 12px; font-variant-numeric: tabular-nums; background: color-mix(in srgb, var(--red) 14%, transparent); color: var(--red); }
+.vt-cut .pl-ib { width: 22px; height: 22px; color: inherit; } .vt-cut .pl-ib svg { width: 12px; height: 12px; }
+.vt-none { color: var(--text-3); }
+.vt-foot { margin-top: 14px; gap: 8px; align-items: center; }
+@media (max-width: 640px) {  /* 手机：选中说明 / 修剪后时长各占一行，下面的按钮平分一行，不零散换行 */
+  .vt-sel-t, .vt-sum { flex: 1 1 100%; } .vt-sel .spacer, .vt-foot .spacer { display: none; }
+  .vt-sel .btn, .vt-foot .btn { flex: 1 1 0; justify-content: center; }
+}
+
+/* 一次选好几段：另外加的黄色框（点击切换到那一段，右上角 × 删除），2026-11-05 */
+.vseg-track .vseg-xs { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.vseg-track .vseg-x { position: absolute; top: 0; bottom: 0; box-sizing: border-box; min-width: 14px; border: 2px solid rgba(255, 204, 0, .9); border-radius: 7px; background: rgba(255, 204, 0, .14); pointer-events: auto; cursor: pointer; }
+.vseg-track .vseg-xd { position: absolute; top: 2px; right: 2px; width: 16px; height: 16px; padding: 0; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(0, 0, 0, .65); color: #fff; cursor: pointer; opacity: 0; transition: opacity .15s; }
+.vseg-track .vseg-xd svg { width: 10px; height: 10px; }
+@media (hover: hover) and (pointer: fine) { .vseg-track .vseg-x:hover { background: rgba(255, 204, 0, .26); } .vseg-track .vseg-x:hover .vseg-xd { opacity: 1; } }
+@media (hover: none) { .vseg-track .vseg-xd { opacity: 1; } }
+@media (min-width: 1200px) { .ig-v2 #ve-src:not(.ptall) .ve-mini .vseg-x { border: 0; border-radius: 3px; background: rgba(255, 204, 0, .45); } .ig-v2 #ve-src:not(.ptall) .ve-mini .vseg-xd { display: none; } }
+.vseg-len.bad { color: var(--red); }
+.vsp-g { padding: 8px 10px 4px; border-radius: 12px; background: rgba(127, 127, 127, .06); }
+.vsp-g + .vsp-g { margin-top: 8px; }
+.vsp-g.on { background: color-mix(in srgb, var(--blue) 8%, transparent); }
+.vsp-gh { display: flex; align-items: baseline; gap: 8px; margin: 0 2px 6px; font-variant-numeric: tabular-nums; }
+.vsp-gh b { font-size: 13.5px; }
+.vseg.st.land .vseg-act { flex-wrap: wrap; row-gap: 6px; }  /* 多了“添加一段”：放不下时换行，不撑出去 */
+
+/* 找换装点：选段条上的标记（绿 = 定格，橙 = 大动作，紫 = 转身；上方白色刻度 = 节拍，长的是重拍） */
+.vseg-track .vseg-cps { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.vseg-track .vcp { position: absolute; bottom: 3px; width: 4px; margin-left: -2px; border-radius: 2px; pointer-events: auto; cursor: pointer; box-shadow: 0 0 0 1px rgba(0, 0, 0, .6); }
+.vcp.k-beat, .vcp-dot.k-beat { background: #0a84ff; } .vcp.sync { box-shadow: 0 0 0 1.5px #fff; }  /* 2026-11-10：卡点（只有音乐）；动作和音乐都卡上的带白边 */
+.vcp.k-hit, .vcp-dot.k-hit { background: #34c759; } .vcp.k-swing, .vcp-dot.k-swing { background: #ff9f0a; } .vcp.k-turn, .vcp-dot.k-turn { background: #bf5af2; }
+.vseg-track .vbt { position: absolute; top: 0; width: 1px; height: 5px; background: rgba(255, 255, 255, .55); pointer-events: none; }
+.vseg-track .vbt.d { width: 2px; height: 9px; margin-left: -.5px; background: #fff; }
+@media (hover: hover) and (pointer: fine) { .vseg-track .vcp:hover { transform: scaleX(1.6); } }
+.vseg-cp { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 8px; font-size: 12.5px; color: var(--text-2); }
+.vseg-cp[hidden] { display: none; }
+.vseg-cp .vcp-dot { display: inline-block; width: 8px; height: 8px; margin-right: 4px; border-radius: 2px; vertical-align: -1px; }
+.vseg-cp .chip.on { color: var(--blue); }
+.vseg-cp .vcp-leg { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-width: 0; }
+.vseg-cp .vcp-btns { display: flex; align-items: center; gap: 8px; margin-left: auto; flex: none; }
+.vcp-busy { display: inline-block; width: 12px; height: 12px; margin-right: 6px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; vertical-align: -2px; animation: vcpspin .8s linear infinite; }
+@keyframes vcpspin { to { transform: rotate(360deg); } }
+@media (min-width: 1200px) { .ig-v2 #ve-src:not(.ptall) .ve-mini .vseg-cps { display: none; } }  /* 只是宽窗口那条细条；手机 / 窄窗口的选段条要显示换装点 */
+
+.vseg-track .vseg-x { border-width: 1.5px; border-color: rgba(255, 204, 0, .55); border-radius: 6px; background: rgba(255, 204, 0, .07); }  /* 另外几段淡一些：一眼看出哪段是当前（带把手的） */
+
+/* 选段条（2026-11-05 第三版）：样子和第二版一样（两侧粗黄竖条、框外压暗），但竖条画在选中范围外面——
+   框里露出的正好是选中的那段，白线播到开头 / 结尾正好贴着框的内边；条的左右各留出竖条的宽度，选到最开头 / 最后也不会被切掉 */
+.vseg-track.vtrim > .vtrim-in { position: absolute; top: 0; bottom: 0; left: 10px; right: 10px; }
+.vseg-track.vtrim .vtrim-film { border-radius: 2px; }
+.vseg-track.vtrim .vseg-rng { min-width: 2px; border-width: 2px 0 !important; border-radius: 0 !important; box-shadow: 0 0 0 9999px rgba(0, 0, 0, .5) !important; }
+.vtrim .vtrim-h { top: -2px; bottom: -2px; width: 10px; background: #ffcc00; }
+.vtrim .vtrim-h.a { left: -10px; border-radius: 7px 0 0 7px; } .vtrim .vtrim-h.b { right: -10px; border-radius: 0 7px 7px 0; }
+.vtrim .vtrim-h::before { width: 2px; height: 12px; margin: -6px 0 0 -1px; background: rgba(0, 0, 0, .55); }
+.vtrim .vtrim-h::after { left: -6px; right: -6px; }
+@media (min-width: 1200px) { .ig-v2 #ve-src:not(.ptall) .ve-mini .vseg-track.vtrim > .vtrim-in { left: 0; right: 0; } }  /* 只给宽窗口那条细条用：手机上清零会把左把手裁掉，拖不动开始位置（2026-11-07） */
+/* 手机：剪辑条更高、好拖；"添加一段"跟在设为开始 / 结束后面 */
+@media (max-width: 700px) { .ve-mini .vseg-track.vtrim { height: 52px !important; border-radius: 10px !important; } .ve-mini .vtrim .vtrim-h { width: 14px; } .ve-mini .vseg-track.vtrim > .vtrim-in { left: 14px; right: 14px; }
+  .ve-mini .vtrim .vtrim-h.a { left: -14px; } .ve-mini .vtrim .vtrim-h.b { right: -14px; } .ve-mini .vtrim .vtrim-h::before { height: 16px; margin-top: -8px; } .ve-mini .btn, .ve-mini .chip { height: 34px; font-size: 14px; } }
+
+/* 剪辑区精简（2026-11-05，前端原则：少文字、解释进“?”） */
+.vseg-len { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 10px; font-variant-numeric: tabular-nums; }
+.vseg-len .vseg-warn { color: var(--red); }
+.vseg-cp .tip-q { margin-left: -4px; }
+
+/* 缩略图在下面时：缩略图保持全宽，下面一行是拖动条（代替浏览器的横向滚动条）+ 排法 / 收起按钮；收起后展开按钮还在最右边（app.js galLayPlace） */
+.ig-gal-card.gal-ctl-on > #vd-gal, .ig-gal-card.gal-ctl-on > #ig-gal { scrollbar-width: none; padding-bottom: 2px !important; }
+.ig-gal-card.gal-ctl-on > #vd-gal::-webkit-scrollbar, .ig-gal-card.gal-ctl-on > #ig-gal::-webkit-scrollbar { display: none; }
+.ig-gal-card.gal-ctl-on > .gal-ctl { display: flex; align-items: center; gap: 4px; margin-top: 4px; }
+.gal-sb { flex: 1; min-width: 0; height: 14px; position: relative; touch-action: none; }
+.gal-sb-th { position: absolute; left: 0; top: 4px; height: 6px; border-radius: 6px; background: rgba(120, 120, 128, .26); transition: background-color .2s; }
+.gal-sb:hover .gal-sb-th, .gal-sb.drag .gal-sb-th { background: rgba(120, 120, 128, .5); }
+html[data-theme="dark"] .gal-sb-th { background: rgba(255, 255, 255, .15); }
+html[data-theme="dark"] .gal-sb:hover .gal-sb-th, html[data-theme="dark"] .gal-sb.drag .gal-sb-th { background: rgba(255, 255, 255, .3); }
+.gal-sb.none .gal-sb-th, .gal-fold .gal-sb { visibility: hidden; }
+
+/* 横屏原视频的换装点（2026-11-06 用户：不要多出两行）：图例在“开始…结束”那一行的最左边、推荐分段 / 吸附在最右边（video.js veCpPaint 放进 .vcp-slot）；
+   一行放不下时按钮换到下一行，不会叠在一起 */
+.vcp-slot:empty { display: none; }
+.vseg.st.land .vseg-rows .vcp-slot { display: flex; align-items: center; font-size: 12.5px; color: var(--text-2); }
+.vseg.st.land .vseg-rows .vcp-slot.l { margin-right: auto; }
+.vseg.st.land .vseg-rows .vcp-slot.r { margin-left: auto; }
+.vseg.st.land .vseg-rows:has(.vcp-slot:not(:empty)) { justify-content: space-between; gap: 8px 14px; }
+.vseg.st.land .vseg-rows:has(.vcp-slot:not(:empty)) .vseg-row .input { width: 72px; }
+.vcp-slot .vcp-leg { display: flex; align-items: center; gap: 6px 10px; flex-wrap: nowrap; white-space: nowrap; }
+.vcp-slot .vcp-btns { display: flex; align-items: center; gap: 8px; }
+.vcp-slot .vcp-dot { display: inline-block; width: 8px; height: 8px; margin-right: 4px; border-radius: 2px; vertical-align: -1px; }
+.vcp-slot .chip.on { color: var(--blue); }
+.vcp-slot .tip-q { margin-left: -4px; }
+@container vsegst (max-width: 939px) {  /* 一行放不下：第一行 图例 | 按钮，第二行 开始 / 结束 居中（不让“开始”“结束”各掉一边） */
+  .vseg.st.land .vseg-rows:has(.vcp-slot:not(:empty)) { justify-content: center; }
+  .vseg.st.land .vseg-rows:has(.vcp-slot:not(:empty)) .vcp-slot.r { order: 1; }
+  .vseg.st.land .vseg-rows:has(.vcp-slot:not(:empty))::before { content: ''; order: 2; flex-basis: 100%; height: 0; }
+  .vseg.st.land .vseg-rows:has(.vcp-slot:not(:empty)) .vseg-row { order: 3; }
+}
+
+/* ===== 视频组（2026-11-06）：叠放的格子、组面板、拼接视频的分段条（video.js vgPop / vgSegBar） ===== */
+/* 叠放：格子背后错开两层（像一叠照片）；鼠标停上去时两层散开一点 */
+.vd-tile.vg-stack, .ig-ju.vg-stack { box-shadow: 4px -4px 0 -1px rgba(128, 128, 136, .42), 8px -8px 0 -3px rgba(128, 128, 136, .24); transition: box-shadow .22s cubic-bezier(.2, .8, .2, 1), transform .22s cubic-bezier(.2, .8, .2, 1); }
+.vd-tile.vg-stack:hover, .ig-ju.vg-stack:hover, .vd-tile.vg-stack:focus-visible { box-shadow: 6px -6px 0 -1px rgba(128, 128, 136, .5), 12px -12px 0 -3px rgba(128, 128, 136, .3); transform: translate(-1px, 1px); }
+.vd-gal:has(.vg-stack) { padding-top: 10px !important; padding-right: 12px !important; }
+.vg-n { display: inline-flex; align-items: center; gap: 3px; }
+.vg-n svg { width: 12px; height: 12px; }
+@media (prefers-reduced-motion: reduce) { .vd-tile.vg-stack, .ig-ju.vg-stack { transition: none; } }
+/* 组面板 */
+.vg-pop { position: fixed; z-index: 1500; width: min(640px, calc(100vw - 20px)); max-height: min(72vh, 620px); overflow: auto; overscroll-behavior: contain; padding: 12px 14px 14px; border-radius: 16px;
+  background: var(--surface); color: var(--text); border: 1px solid var(--line); box-shadow: var(--shadow-lg); transform-origin: center; }
+html[data-theme="dark"] .vg-pop { background: var(--surface-2); }
+.vg-pop.sheet { left: 8px !important; right: 8px; bottom: calc(8px + env(safe-area-inset-bottom)); top: auto !important; width: auto; max-height: 72vh; }
+.vg-top { display: flex; align-items: center; gap: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.vg-top > svg { width: 16px; height: 16px; color: var(--text-2); }
+.vg-top .tiny { color: var(--text-2); }
+.vg-sec { padding-top: 10px; }
+.vg-sec + .vg-sec { border-top: 1px solid var(--line); margin-top: 10px; }
+.vg-slot.focus { border-radius: 12px; background: var(--blue-soft); padding: 10px 8px 8px; margin-left: -8px; margin-right: -8px; }
+.vg-h { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; min-height: 28px; }
+.vg-h .tiny { color: var(--text-2); }
+.vg-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+.vg-it { position: relative; flex: none; width: 132px; border-radius: 10px; overflow: hidden; background: rgba(127, 127, 127, .12); cursor: pointer; outline: 2px solid transparent; outline-offset: -2px; transition: outline-color .15s, transform .15s; }
+.vg-it img, .vg-it .vd-noth { display: block; width: 100%; height: 78px; object-fit: cover; }
+.vg-it .vd-noth { display: grid; place-items: center; color: var(--text-3); }
+.vg-it-t { display: block; padding: 5px 7px 6px; font-size: 12px; line-height: 1.35; }
+.vg-it-t small { display: block; color: var(--text-2); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vg-it.on { outline-color: var(--blue); }
+@media (hover: hover) and (pointer: fine) { .vg-it:hover { transform: translateY(-2px); } .vg-it:hover .vg-del { opacity: 1; } }
+.vg-del { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; display: grid; place-items: center; border: 0; border-radius: 7px; background: rgba(0, 0, 0, .55); color: #fff; opacity: 0; transition: opacity .15s; cursor: pointer; }
+@media (hover: none) { .vg-del { opacity: .85; } }
+.vg-del svg { width: 14px; height: 14px; }
+.vg-used { position: absolute; left: 5px; top: 5px; padding: 1px 6px; border-radius: 6px; font-size: 11px; background: rgba(255, 204, 0, .92); color: #1d1d1f; font-weight: 600; }
+.vg-swap { position: absolute; left: 5px; top: 5px; padding: 2px 8px !important; min-height: 0 !important; font-size: 11.5px !important; }
+/* 拼好的视频：分段条 */
+.vd-segbar { position: relative; height: 20px; margin-top: 6px; border-radius: 6px; background: rgba(127, 127, 136, .16); cursor: pointer; }
+.vd-sb { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; justify-content: center; gap: 2px; min-width: 14px; padding: 0 3px; border: 0; border-radius: 5px;
+  background: rgba(255, 204, 0, .55); box-shadow: inset 0 0 0 1.5px rgba(255, 204, 0, .95); color: #1d1d1f; font-size: 11px; font-weight: 700; cursor: pointer; overflow: hidden; transition: background-color .15s; }
+.vd-sb small { font-weight: 600; opacity: .75; font-size: 10px; }
+.vd-sb:hover, .vd-sb:focus-visible { background: rgba(255, 204, 0, .8); }
+.vd-sb-new { position: absolute; top: 2px; right: 2px; width: 6px; height: 6px; border-radius: 50%; background: var(--blue); }
+.vd-sb-h { position: absolute; top: -2px; bottom: -2px; width: 2px; margin-left: -1px; background: var(--text); border-radius: 1px; pointer-events: none; opacity: .7; }
+.vd-tile.vg-stack .vd-play, .ig-ju.vg-stack .vd-ju-p { display: none; }
+.vg-swap { background: rgba(255, 255, 255, .94) !important; color: #1d1d1f !important; border: 0 !important; box-shadow: 0 1px 4px rgba(0, 0, 0, .25) !important; font-weight: 600; border-radius: 7px !important; }
+.vg-swap:hover { background: #fff !important; color: var(--blue) !important; }
+.vg-sec:first-of-type .vg-it, .vg-top + .vg-sec .vg-it { width: 176px; }
+.vd-tile.vg-stack, .ig-ju.vg-stack { box-shadow: 4px -4px 0 -1px rgba(128, 128, 136, .6), 8px -8px 0 -3px rgba(128, 128, 136, .35); }
+.vd-tile.vg-stack:hover, .ig-ju.vg-stack:hover, .vd-tile.vg-stack:focus-visible { box-shadow: 6px -6px 0 -1px rgba(128, 128, 136, .7), 12px -12px 0 -3px rgba(128, 128, 136, .42); }
+
+/* 剪辑：时间旁边两个小图标——选择整段、拼接回原视频（2026-11-06 用户：很少用，不要长文字，别把“添加一段”挤到上面） */
+.vseg.st .vseg-tw { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.vseg-x { display: flex; align-items: center; gap: 4px; }
+.vseg-x .pl-ib { width: 30px; height: 30px; border-radius: 8px; color: var(--text-2); }
+.vseg-x .pl-ib svg { width: 17px; height: 17px; }
+.vseg-x .ve-spl.on { color: var(--blue); background: var(--blue-soft); box-shadow: inset 0 0 0 1px var(--blue); }
+.vseg.st.land .vseg-tw { grid-column: 1; grid-row: 1; justify-self: start; }
+.vseg.st.port .vseg-tw { justify-content: center; }
+.vseg.st.land .vseg-act { flex-wrap: nowrap; }
+@container vsegst (max-width: 760px) {
+  .vseg.st.land .vseg-tw { grid-column: 2; grid-row: 1; justify-self: end; flex-direction: row-reverse; }
+}
+@container vsegst (max-width: 640px) {
+  .vseg.st .vseg-tw { grid-column: 2; grid-row: 1; justify-self: end; flex-direction: row-reverse; }
+}
+.vseg-x [hidden] { display: none !important; }
+/* 播放键和“只放选段”一样高（2026-11-06 用户：大小差太多） */
+.vseg-tl .vseg-play { height: 32px; width: 44px; border-radius: 999px; }
+.vseg-tl .vseg-play svg { width: 15px; height: 15px; }
+.vseg-tl .vseg-only { height: 32px; padding: 0 14px; box-sizing: border-box; }
+/* 手机上细分类栏收起时：以前只往右推出去，左边的阴影和一小条还压在右边一列预览上（2026-11-06 用户：预览重叠） */
+.gal-narrow:not(.gal-side-on) .gal-side { visibility: hidden; box-shadow: none; transition: transform .26s cubic-bezier(.2, 0, 0, 1), visibility 0s linear .26s, box-shadow 0s linear .26s; }
+/* 选段弹窗（手机上用）：另外几段淡黄框，点一下切过去；底部“添加一段”小图标；播放那一行不换行 */
+.vseg-oth { position: absolute; top: 0; bottom: 0; z-index: 1; box-sizing: border-box; border: 2px solid rgba(255, 204, 0, .7); border-radius: 6px; background: rgba(255, 204, 0, .14); cursor: pointer; }
+.vseg-m .vsg-add2 { width: 36px; height: 36px; border-radius: 10px; color: var(--text-2); }
+.vseg-m .vsg-add2 svg { width: 20px; height: 20px; }
+@media (max-width: 760px) {
+  .vseg-m .vseg-tl { flex-wrap: nowrap; gap: 2px; }
+  .vseg-m .vseg-tl .btn.ghost { padding-left: 6px !important; padding-right: 6px !important; }
+  .vseg-m .vseg-tl .vseg-only { padding: 0 10px; }
+}
+@media (max-width: 760px) {
+  .vseg-m .vseg-tl { flex-wrap: wrap; row-gap: 6px; }
+  .vseg-m .vseg-tl .vseg-play { flex: none; }
+  .vseg-m .vseg-tl .vseg-t { flex: 1 1 100%; order: 9; text-align: center; margin: 0; }
+}
+/* 重新生成前的提示词框 */
+.vrd-m { width: min(560px, 94vw); }
+.vrd-i { margin-bottom: 10px; color: var(--text-2); display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.vrd-p { width: 100%; box-sizing: border-box; min-height: 120px; resize: vertical; }
+.vrd-b { gap: 8px; margin-top: 12px; }
+.vrd-go svg { width: 15px; height: 15px; margin-right: 4px; vertical-align: -2px; }
+
+/* 自动质检（2026-11-06）：缩略图上的小三角、组面板卡片角上的标记、大画面下面的问题列表 */
+.vd-badges b.vqc { display: inline-flex; align-items: center; gap: 3px; background: rgba(255, 149, 0, .92); color: #1d1d1f; }
+.vd-badges b.vqc svg { width: 11px; height: 11px; }
+.vg-qc { position: absolute; right: 5px; bottom: 22px; width: 20px; height: 20px; display: grid; place-items: center; border-radius: 6px; background: rgba(255, 149, 0, .92); color: #1d1d1f; pointer-events: auto; }
+.vg-qc svg { width: 12px; height: 12px; }
+.vd-qc { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; font-size: 12px; }
+.vd-qc-h { display: inline-flex; align-items: center; gap: 4px; color: #b25d00; font-weight: 600; }
+.vd-qc-h svg { width: 13px; height: 13px; }
+.vd-qc-f { border: 0; border-radius: 999px; padding: 4px 10px; font: inherit; background: rgba(255, 149, 0, .14); color: inherit; cursor: pointer; }
+@media (hover: hover) { .vd-qc-f:hover { background: rgba(255, 149, 0, .26); } }
+html[data-theme="dark"] .vd-qc-h { color: #ffb340; }
+
+/* 并排对比（vgCompare，2026-11-06）：最多 5 格（原视频 + 4 个版本），一根进度条 */
+.modal.wide.vgc { width: min(1200px, 96vw); max-width: none; }
+.vgc-top .tiny { font-weight: 400; }
+.vgc-grid { display: grid; gap: 10px; margin-top: 12px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.vgc-grid.n2 { grid-template-columns: repeat(2, 1fr); }
+.vgc-c { position: relative; min-width: 0; }
+.vgc-c video { width: 100%; max-height: 62vh; aspect-ratio: auto; display: block; border-radius: 10px; background: #000; object-fit: contain; }
+.vgc-c.src video { outline: 2px solid rgba(255, 255, 255, .25); outline-offset: -2px; }
+.vgc-b { display: flex; align-items: center; gap: 6px; margin-top: 6px; min-height: 30px; font-size: 12.5px; }
+.vgc-b .pl-ib { width: 30px; height: 30px; }
+.vgc-snd.on { color: var(--accent, #0a84ff); background: rgba(10, 132, 255, .12); }
+.vgc-qc { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 6px; background: rgba(255, 149, 0, .92); color: #1d1d1f; }
+.vgc-qc svg { width: 12px; height: 12px; }
+.vgc-used { font-size: 11px; padding: 2px 7px; border-radius: 6px; background: rgba(255, 204, 0, .92); color: #1d1d1f; font-weight: 600; }
+.vgc-ctl { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+.vgc-ctl .vgc-play { flex: none; width: 44px; height: 32px; border-radius: 999px; }
+.vgc-seek { flex: 1; min-width: 0; }
+.vgc-t { flex: none; min-width: 52px; text-align: right; font-variant-numeric: tabular-nums; }
+.vg-h .vg-cmp { width: 28px; height: 28px; }
+.vg-h .vg-cmp svg { width: 16px; height: 16px; }
+@media (max-width: 760px) { .vgc-grid, .vgc-grid.n2 { grid-template-columns: repeat(2, 1fr); gap: 8px; } .vgc-c video { max-height: 38vh; } .vgc-b .btn.small { padding: 4px 8px; } }
+/* 对比窗口里的“换上”放在每格下面那一行（组面板卡片上是盖在缩略图左上角） */
+.vgc-b .vg-swap { position: static; padding: 4px 10px !important; font-size: 12px !important; background: var(--blue, #0a84ff) !important; color: #fff !important; box-shadow: none !important; }
+.vgc-b .vg-swap:hover { background: #0071e3 !important; color: #fff !important; }
+/* 竖屏视频别占满整个高度：桌面最多 50vh，手机 30vh */
+.vgc-c video { max-height: 50vh; }
+@media (max-width: 760px) { .vgc-c video { max-height: 30vh; } }
+
+/* 我的下载：软件内置使用的 LoRA 收在最下面（2026-11-06） */
+.cv-bi-h { display: flex; align-items: center; gap: 8px; width: 100%; margin: 18px 0 10px; padding: 10px 4px; border: 0; border-top: 1px solid var(--line, rgba(127, 127, 127, .2)); background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.cv-bi-h svg { width: 16px; height: 16px; flex: none; transition: transform .18s; }
+.cv-bi-h.open svg { transform: rotate(90deg); }
+.cv-bi-h .tiny { opacity: .7; }
+@media (hover: hover) { .cv-bi-h:hover b { color: var(--blue, #0a84ff); } }
+.cv-role { margin-top: 4px; color: var(--blue, #0a84ff); line-height: 1.35; }
+.cv-mine-none { padding: 8px 2px; opacity: .7; }
+.cv-grid[hidden] { display: none !important; }
+/* 2026-11-06 用户：改视频左栏下面空着时，各项上下间距放大一点（窗口越高越松；768 高的窗口不变，免得多出滚动） */
+@container vdleft (min-width: 300px) {
+  .ig-v2.ve-on .ig-panel[data-o="4"] .ve-opts { --vgap: clamp(12px, calc((100vh - 820px) * 0.12 + 12px), 28px); row-gap: var(--vgap); margin-top: var(--vgap); }
+  .ig-v2.ve-on .ig-panel[data-o="4"] .ig-2 { row-gap: clamp(12px, calc((100vh - 820px) * 0.12 + 12px), 28px); }
+  .ig-v2.ve-on .ig-panel[data-o="4"] .field > .label { margin-bottom: clamp(0px, calc((100vh - 820px) * 0.015), 4px); }
+}
+/* 2026-11-06 界面审查：素材库选中的标签深色里白字对比度不够，用稍深的蓝；手机上标签加高到 32px 好点 */
+html[data-theme="dark"] .gal-chip.on { background: #2f74db; }
+@media (pointer: coarse) { .gal-chip { padding-top: 7px; padding-bottom: 7px; } }
+
+/* 2026-11-07 手机素材库：上面只留两行（库标签 + 图标；路径 + 图标），图片区多出一大块 */
+.gal-qbtn { display: none !important; }
+@media (max-width: 640px) {
+  .gal-top { position: relative; gap: 6px; padding: 2px 0 8px; }
+  .gal-t1 { flex-wrap: nowrap; gap: 6px; }
+  .gal-tabs { width: auto; flex: 1 1 auto; min-width: 0; }
+  .gal-t1 > .gal-tabs { flex: 1 1 0 !important; width: 0 !important; min-width: 0 !important; }
+  .gal-t1 > .gal-tabs button { flex: 1 1 0 !important; min-width: 0 !important; padding-left: 2px !important; padding-right: 2px !important; }
+  .gal-t1 .btn { width: 36px; height: 36px; padding: 0; justify-content: center; }
+  .gal-qbtn { display: inline-flex !important; }
+  .gal-qbtn.on { background: var(--blue-soft); color: var(--blue); }
+  .gal-q { display: none; }
+  .gal-qon .gal-q { display: block; position: absolute; left: 0; right: 0; top: 2px; z-index: 5; }
+  .gal-qon .gal-q .input { height: 36px; background: var(--field, #222); }
+  .gal-fold .gal-t2 { flex-wrap: nowrap; gap: 6px; }
+  .gal-fold .gal-t2 .gal-path { flex: 1 1 auto !important; min-width: 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; white-space: nowrap; }
+  .gal-fold .gal-t2 .gal-path::-webkit-scrollbar { display: none; }
+  .gal-fold .gal-t2 .gal-fopts { flex: none !important; flex-wrap: nowrap; gap: 4px; }
+  .gal-fopts .gal-fo > span { display: none; }
+  .gal-fopts .gal-fo, .gal-facts .btn { width: 32px; height: 32px; padding: 0 !important; justify-content: center; }
+  .gal-fopts .gal-fo svg, .gal-facts .btn svg { margin: 0 !important; }
+  .gal-fold .gal-t2 .gal-n { display: none; }
+  .gal-facts { gap: 4px; margin: 0; }
+  .gal-facts .gal-seln { font-size: 12.5px; white-space: nowrap; }
+  /* 组合栏放到标题右边，不单独占一行 */
+  .gal-ph { flex-wrap: nowrap; align-items: center; }
+  .gal-tray { width: auto; flex-wrap: nowrap; gap: 5px; }
+  .gal-tray-l { display: none; }
+  .gal-slot { width: 32px; height: 40px; }
+  .card.gal-page { padding-left: 10px; padding-right: 10px; padding-top: 8px; }
+}
+
+/* ===== 2026-11-08：任务角标固定在右下角（电脑） ===== */
+.vd-jp.dock { position: fixed; z-index: 60; right: 24px; bottom: 30px; margin: 0 !important; height: 36px; gap: 8px !important; padding: 0 12px 0 13px !important; max-width: 340px;
+  background: var(--card); border: 1px solid var(--line); box-shadow: 0 6px 20px rgba(0, 0, 0, .18); font-size: 12.5px; color: var(--text-2); }
+html[data-theme="dark"] .vd-jp.dock { background: rgba(38, 38, 42, .92); border-color: var(--line-2); backdrop-filter: blur(16px) saturate(160%); -webkit-backdrop-filter: blur(16px) saturate(160%); box-shadow: 0 8px 24px rgba(0, 0, 0, .45); }
+.vd-jp.dock .vd-jp-nm { flex: 0 1 auto; min-width: 0; max-width: 140px; overflow: hidden; text-overflow: ellipsis; color: var(--text); font-weight: 500; }
+.vd-jp.dock .vd-jp-bar { display: block !important; width: 72px; }
+.vd-jp.dock .vd-jp-t { flex: none; min-width: 30px; text-align: right; color: var(--text-2); }
+.vd-jp.dock .vd-jp-n { display: inline-block !important; }
+.vd-jp.dock.slim .vd-jp-nm { display: none; }
+.vd-jp.dock.slim .vd-jp-bar { width: 48px; }
+.vd-jp.dock .vd-jp-pop { top: auto; bottom: calc(100% + 10px); left: auto; right: -1px; width: 380px; max-width: min(380px, calc(100vw - 48px)); max-height: min(480px, 70vh); transform: translateY(4px); }
+.vd-jp.dock .vd-jp-pop::before { top: auto; bottom: -12px; height: 12px; }
+.vd-jp.dock.pin .vd-jp-pop, .vd-jp.dock:focus-within .vd-jp-pop { opacity: 1; visibility: visible; transform: none; }
+@media (hover: hover) and (pointer: fine) { .vd-jp.dock:hover .vd-jp-pop { opacity: 1; visibility: visible; transform: none; } .vd-jp.dock:hover { background: var(--card); } html[data-theme="dark"] .vd-jp.dock:hover { background: rgba(48, 48, 52, .95); } }
+.vd-jp.dock .vd-jp-rt { align-items: center; }
+.vd-jp.dock .vd-jp-rt > .btn, .vd-jp.dock .vd-jp-rt > .pl-ib { flex: none; margin-left: 2px; }
+.vd-jp.dock .vd-jp-rt > .btn { height: 26px; padding: 0 10px; font-size: 12px; }
+.vd-jp-rm { margin-top: 2px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 右栏、输入框都收起时：输入框左边一行小字（本次使用） */
+.vd-cur { all: unset; box-sizing: border-box; position: fixed; z-index: 5; font-size: 12px; line-height: 1.5; color: var(--text-3); text-align: right; cursor: pointer; border-radius: 8px; padding: 4px 8px; font-variant-numeric: tabular-nums;
+  white-space: normal; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }  /* 2026-11-10 用户：要显示全——左边地方窄时按“ · ”分成几行（每一项不拆开），最多 3 行 */
+.vd-cur > .vc-i { white-space: nowrap; }
+#main > .vd-cur:not([hidden]) { display: -webkit-box !important; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }  /* 2026-11-16 检查：窄的时候折成 4 行、最后一行被裁掉——最多 3 行，多的悬停看全 */
+.vd-cur[hidden] { display: none; }
+.vd-cur:hover { color: var(--text-2); background: rgba(127, 127, 127, .1); }
+.vd-cur:focus-visible { outline: 2px solid var(--blue); }
+@media (max-width: 760px) { .vd-cur { display: none !important; } }
+/* 左上角“收起缩略图”：面板图标，不再变蓝、不再有箭头动画 */
+.gal-fb[aria-pressed] { color: var(--text-3); }
+.gal-fb:hover { color: var(--text); }
+
+.vd-jp.dock .vd-jp-pop::before { display: none; }
+.vd-jp.dock::before { content: ""; position: absolute; left: 0; right: 0; bottom: 100%; height: 12px; }  /* 从角标移到弹出的卡片上时不断开（放在卡片里会让卡片多出滚动） */
+
+#main > .vd-jp.dock, #main > .vd-cur { width: max-content !important; left: auto !important; top: auto !important; margin: 0 !important; }  /* #main 的子元素默认占满整行 */
+#main > .vd-jp.dock { max-width: 340px; }
+
+/* “中文 / 英文”挪进选项那一排时：和旁边的选项按钮一样高，原来那一行不再占地方 */
+.label.vd-plab.vd-plab-empty { display: none !important; }
+.bar-l > .vd-lang.in-bar { flex: none; order: 9; }
+.bar-l > .vd-lang.in-bar .vd-lang-s button { height: 30px; padding: 0 10px; }
+@media (max-width: 760px) { .bar-l > .vd-lang.in-bar .vd-lang-s button { height: 34px; padding: 0 11px; font-size: 13px; } }
+
+/* 手机 / 窄窗口左栏的小选段条也有“找换装点”（2026-11-08）：图例和推荐分段单独一整行；宽窗口在右边大画面里，这里不重复 */
+.ve-mini > .vseg-cp { flex-basis: 100%; margin-top: 0; }
+@media (max-width: 1199px) { .ve-mini { flex-wrap: wrap; row-gap: 8px; } .ve-mini .ve-trk { flex-basis: 100%; } }  /* 窄窗口：拖动条单独一整行（按钮多了以后不再被挤成很短一截） */
+@media (min-width: 1200px) { .ig-v2 #ve-src .ve-mini > :is(.vsg-find, .vseg-cp) { display: none !important; } }
+@media (pointer: coarse) { .vseg-track .vcp::after { content: ""; position: absolute; top: 0; bottom: 0; left: -6px; right: -6px; } }  /* 手机：换装点标记只有 4px 宽，手指点的范围放宽到 16px */
+/* 窄窗口（< 1200）点缩略图是在详情里播放：播放区关着时“点击缩略图播放”这块空着没用，不显示（2026-11-08 进页面默认不打开最近那段） */
+@media (max-width: 1199px) { #vd-stage[data-id="closed"]:not([data-cf="src"]) { display: none; } }
+
+/* 2026-11-10：事后超分 / 插帧 / 调色的成品，组面板缩略图左上角标出做了什么 */
+.vg-it > .vg-post { position: absolute; top: 6px; left: 6px; z-index: 1; max-width: calc(100% - 40px); padding: 1px 6px; border-radius: 6px; font-size: 11px; line-height: 17px; color: #fff; background: rgba(0, 0, 0, .62); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: auto; }
+
+/* 素材库的图集（2026-11-15）：和一张图一样的一格，不画叠起来的边。
+   参照 iPhone 相册 / Google 相册：角上一个小小的磨砂胶囊写“几张”，含实况的左上角一个实况标记；电脑上鼠标左右划过去翻看，下面细线显示第几张 */
+.gal-im > .gal-stb { position: absolute; top: 7px; z-index: 2; display: inline-flex; align-items: center; gap: 3px; height: 20px; padding: 0 7px 0 6px; border-radius: 999px;
+  font: 600 11px/1 -apple-system, "SF Pro Text", "PingFang SC", system-ui, sans-serif; font-variant-numeric: tabular-nums; letter-spacing: .01em; color: rgba(255, 255, 255, .95);
+  background: rgba(28, 28, 30, .34); -webkit-backdrop-filter: blur(12px) saturate(1.6); backdrop-filter: blur(12px) saturate(1.6);
+  box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .2), 0 1px 6px rgba(0, 0, 0, .18); pointer-events: none; }
+.gal-im > .gal-stb svg { width: 12px; height: 12px; flex: none; }
+.gal-set .gal-stb-n { right: 7px; }
+.gal-im > .gal-stb-l { left: 7px; padding: 0; width: 20px; justify-content: center; }
+.gal-im > .gal-stb-l svg { width: 14px; height: 14px; }
+.gal-multi .gal-im > .gal-stb-l { display: none; }  /* 多选时左上角是勾选框 */
+/* 翻看（2026-11-15 改版，见 gallery.js galDots）：鼠标停在格子上才出现左右圆箭头（Airbnb 房源卡片），下面圆点最多 5 个（Instagram）；手机上点进去看 */
+.gal-set .gal-dots { position: absolute; left: 0; right: 0; bottom: 9px; z-index: 2; display: flex; justify-content: center; align-items: center; gap: 5px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+.gal-set .gal-dots i { width: 6px; height: 6px; border-radius: 50%; background: rgba(255, 255, 255, .55); box-shadow: 0 0 3px rgba(0, 0, 0, .3); transition: transform .2s, background .2s; }
+.gal-set .gal-dots i.on { background: #fff; }
+.gal-set .gal-dots i.sm { transform: scale(.66); }
+/* 图集左右箭头（2026-11-15 用户：太显眼、太大）：参照 Apple 照片 / Apple Store 商品图的翻页键——小一号的磨砂深色圆片、细箭头，平时半透明，指上去才亮；淡入不跳出来 */
+.gal-sarr { all: unset; box-sizing: border-box; position: absolute; top: 50%; left: 6px; z-index: 3; width: 22px; height: 22px; margin-top: -11px; border-radius: 50%; display: grid; place-items: center; cursor: pointer;
+  color: rgba(255, 255, 255, .95); background: rgba(28, 28, 30, .38); -webkit-backdrop-filter: blur(10px) saturate(1.6); backdrop-filter: blur(10px) saturate(1.6);
+  box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .18); opacity: 0; visibility: hidden; transition: opacity .18s ease, background .15s ease, visibility 0s .18s; }
+.gal-sarr svg { width: 11px; height: 11px; stroke-width: 2.4; }
+.gal-sarr-r { left: auto; right: 6px; }
+.gal-sarr-r svg { transform: scaleX(-1); }
+.gal-sarr[hidden] { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  .gal-set:hover .gal-dots { opacity: 1; }
+  .gal-set:hover .gal-sarr { opacity: .85; visibility: visible; transition: opacity .18s ease, background .15s ease, visibility 0s; }
+  .gal-sarr:hover { opacity: 1 !important; background: rgba(28, 28, 30, .58); }
+}
+.gal-sarr:focus-visible { opacity: 1; visibility: visible; outline: 2px solid var(--blue); outline-offset: 1px; }
+.gal-multi .gal-sarr { display: none !important; }
+@media (hover: hover) and (pointer: fine) { .gal-set .gal-stb-n { transition: opacity .15s; } .gal-set:hover .gal-stb-n { opacity: 0; } }  /* 鼠标停上来：右上角让给删除键，下面圆点表示第几张 */
+
+
+/* 快捷位置（2026-11-15）：库标签旁边一组按钮，和库标签同样的底和高度；当前在那个文件夹里 = 选中样式 */
+.gal-qk { flex: none; display: inline-flex; gap: 2px; padding: 3px; border-radius: 11px; background: var(--field); }
+.gal-qk[hidden] { display: none; }
+.gal-qki { all: unset; box-sizing: border-box; cursor: pointer; width: 36px; height: 32px; border-radius: 8px; display: grid; place-items: center; transition: background .2s; }
+.gal-qki img { width: 20px; height: 20px; border-radius: 22.4%; display: block; outline: .5px solid rgba(127, 127, 127, .28); outline-offset: -.5px; }
+@media (hover: hover) { .gal-qki:hover { background: color-mix(in srgb, var(--text) 7%, transparent); } }
+.gal-qki:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+.gal-qki.on { background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .12), 0 1px 1px rgba(0, 0, 0, .04); }
+html[data-theme="dark"] .gal-qki.on { background: #3a3a40; box-shadow: 0 1px 3px rgba(0, 0, 0, .4); }
+@media (max-width: 640px) {  /* 手机：库标签按字的宽度分（“文件夹”比“脸”宽），旁边放得下两个图标也不折行 */
+  .gal-t1 > .gal-qk { padding: 2px; } .gal-qki { width: 34px; height: 32px; } .gal-qki img { width: 22px; height: 22px; }
+  .gal-t1:has(> .gal-qk:not([hidden])) > .gal-tabs button { flex: 1 1 auto !important; white-space: nowrap; }
+}
+
+/* 文件夹的路径一行（2026-11-15 用户：后面的按钮跟着路径长短挪位置）：路径和“几项”在左，切换 / 排序 / 标签 / 整理固定在右边 */
+.gal-fold .gal-t2 .gal-n { margin-left: 2px; }
+.gal-fold .gal-t2 .gal-fopts { margin-left: auto; }
+/* 自己加的快捷位置（文件夹）：和库标签一样的字；多了可以左右滑 */
+.gal-qki.gal-qkt { width: auto; max-width: 9em; padding: 0 11px; font-size: 13px; font-weight: 500; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; line-height: 32px; }
+.gal-qki.gal-qkt.on { color: var(--text); }
+.gal-qk { max-width: 40%; overflow-x: auto; scrollbar-width: none; }
+.gal-qk::-webkit-scrollbar { display: none; }
+@media (max-width: 640px) { .gal-qk { max-width: 34vw; } .gal-qki.gal-qkt { line-height: 32px; padding: 0 9px; } }
+.gal-fold .gal-t2 .gal-fopts ~ .gal-facts { margin-left: 0; }
+/* 视频 | 图集 切换：和旁边的小按钮一样高（30px） */
+@media (max-width: 640px) {  /* 手机：库标签不被挤（按字宽），快捷位置用剩下的地方，多了左右滑 */
+  .gal-t1:has(> .gal-qk:not([hidden])) > .gal-tabs { flex: 0 0 auto !important; width: auto !important; }
+  .gal-t1:has(> .gal-qk:not([hidden])) > .gal-tabs button { min-width: max-content !important; padding-left: 7px !important; padding-right: 7px !important; }
+  .gal-t1 > .gal-qk { flex: 0 1 auto; min-width: 40px; max-width: none; }
+}
+.gal-qki { flex: none; }
+@media (max-width: 640px) {
+  .gal-t1:has(> .gal-qk:not([hidden])) > .gal-tabs button { padding-left: 4px !important; padding-right: 4px !important; }
+  .gal-qki { width: 30px; } .gal-qki img { width: 21px; height: 21px; }
+}
+
+/* 路径一行：路径、“几项”和右边的按钮都按中线对齐（以前“几项”底下多垫了 4px，看着比路径高） */
+.gal-fold .gal-t2 { align-items: center; }
+.gal-fold .gal-t2 .gal-n { margin-bottom: 0; }
+@media (max-width: 640px) {  /* 手机路径那一行的视频 | 图集：和旁边 32px 的图标一样高 */
+}
+/* 展开 / 收起动画（2026-11-15 用户：要丝滑）：宽度用 grid 0fr → 1fr 过渡（按里面字的真实宽度，不用猜最大宽度），底色淡入；曲线和库标签一样 */
+.gal-qk-now, .gal-qk-now * { transition: none !important; }
+@media (max-width: 640px) {  /* 手机：不展开，选中样式落回图标本身 */
+}
+/* 图集翻看的胶片（gallery.js flipTrack）：三张并排，中间那张正对格子；跟手 / 滑动只动 transform（显卡合成，不重排）。
+   到头的橡皮筋、吸附都在 JS 里（trkSet） */
+.gal-im > .gal-trk { position: absolute; inset: 0; z-index: 0; display: flex; transform: translate3d(-100%, 0, 0); will-change: transform; pointer-events: none; }
+.gal-im > .gal-trk > img { flex: 0 0 100%; width: 100%; height: 100%; object-fit: contain; display: block; -webkit-user-drag: none; }
+@media (max-width: 640px) {  /* 界面检查（11-15）：按字宽分后「脸」只有 21px 宽，太窄不好点；每个标签至少 34px，快捷图标收窄一点让出地方 */
+  .gal-t1:has(> .gal-qk:not([hidden])) > .gal-tabs button { min-width: 34px !important; }
+  .gal-t1 .gal-qki { width: 28px; }
+}
+@media (max-width: 640px) { .gal-t1 > .gal-back:disabled { display: none; } }  /* 手机：没有可回退的位置时不占地方（Apple：有地方可回才出现返回） */

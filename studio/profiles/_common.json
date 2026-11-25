@@ -1,0 +1,83 @@
+{
+  "_comment": "通用参数的中文说明。某个模型自己的 profile 里有同名说明时，以模型自己的为准。没有说明的参数会显示官方英文描述。",
+  "hidden_options": [
+    "reference_text",
+    "stream_frames_per_event",
+    "stream_lookahead_margin",
+    "stream_chunk_policy",
+    "stream_left_context",
+    "text_chunk_size",
+    "text_chunk_mode",
+    "cfm_noise_file"
+  ],
+  "options_zh": {
+    "temperature": {
+      "label": "表现力（随机度）",
+      "help": "越低越平稳、越高越有起伏。太高容易念错。"
+    },
+    "top_k": {
+      "label": "候选数",
+      "help": "每一步只在最可能的前 K 个里挑，调小更保守。"
+    },
+    "top_p": {
+      "label": "累计概率",
+      "help": "只在累计概率前 P 的候选里挑，1 表示关闭。"
+    },
+    "seed": {
+      "label": "随机种子",
+      "help": "相同种子 + 相同设置 = 相同结果。不满意就换个数字。"
+    },
+    "max_tokens": {
+      "label": "最大生成长度",
+      "help": "每段最多生成多少声音单元，太小会把结尾截掉。"
+    },
+    "min_tokens": {
+      "label": "最小生成长度",
+      "help": "每段至少生成多少声音单元。"
+    },
+    "repetition_penalty": {
+      "label": "重复惩罚",
+      "help": "大于 1 可以减少卡顿、重复。"
+    },
+    "do_sample": {
+      "label": "随机采样",
+      "help": "关闭后每次结果固定但可能更呆板。"
+    },
+    "guidance_scale": {
+      "label": "引导强度",
+      "help": "越高越贴近提示/参考，太高可能失真。"
+    },
+    "num_inference_steps": {
+      "label": "推理步数",
+      "help": "越多越精细但越慢。"
+    },
+    "language": {
+      "label": "语言",
+      "help": "留空自动识别。"
+    },
+    "instruct": {
+      "label": "指令",
+      "help": "用文字描述语气或音色。"
+    },
+    "emotion_text": {
+      "label": "情绪描述",
+      "help": "用文字描述想要的情绪。"
+    },
+    "emotion_alpha": {
+      "label": "情绪强度",
+      "help": "情绪控制的强弱。"
+    },
+    "interval_silence_ms": {
+      "label": "句间停顿（毫秒）",
+      "help": "句子之间插入的静音长度。"
+    },
+    "length_penalty": {
+      "label": "长度惩罚",
+      "help": "影响生成长短的倾向。"
+    },
+    "num_beams": {
+      "label": "束搜索数",
+      "help": "大于 1 更稳定但更慢。"
+    }
+  }
+}

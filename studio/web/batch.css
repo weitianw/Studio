@@ -1,0 +1,45 @@
+/* 批量页（batch.js）：沿用 card / field / seg / chip / switch 这些现成样式，这里只放这一页自己的排法 */
+.bt-new .field { margin-top: 12px; }
+.bt-new .field:first-child { margin-top: 0; }
+.bt-items { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 8px; max-height: 360px; overflow: auto; }
+.bt-it { display: flex; align-items: center; gap: 10px; padding: 6px; border-radius: 10px; background: var(--bg-2, rgba(127, 127, 127, .08)); }
+.bt-th { width: 44px; height: 44px; object-fit: cover; border-radius: 8px; flex: none; background: rgba(127, 127, 127, .15); }
+.bt-mid { flex: 1; min-width: 0; }
+.bt-n { font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bt-segs { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.bt-sg { display: inline-flex; align-items: center; gap: 2px; padding-right: 2px; }
+.bt-sx { display: inline-grid; place-items: center; width: 18px; height: 18px; border: 0; background: none; color: inherit; opacity: .6; cursor: pointer; border-radius: 50%; padding: 0; }
+.bt-sx:hover { opacity: 1; background: rgba(127, 127, 127, .2); }
+.bt-sx svg { width: 11px; height: 11px; }
+.bt-empty { padding: 10px 2px; }
+.bt-ins { resize: vertical; min-height: 44px; }
+.bt-two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.bt-two > .field { margin-top: 12px !important; }
+.bt-go { margin-top: 16px; gap: 8px; }
+.bt-list { display: flex; flex-direction: column; gap: 8px; }
+.bt-b { border-radius: 12px; background: var(--bg-2, rgba(127, 127, 127, .08)); }
+.bt-b > summary { display: flex; align-items: center; gap: 8px; padding: 10px 12px; cursor: pointer; list-style: none; flex-wrap: wrap; }
+.bt-b > summary::-webkit-details-marker { display: none; }
+.bt-b > summary .tiny { flex: 1; min-width: 0; }
+.bt-bd { padding: 0 12px 10px; }
+.bt-note { margin-bottom: 6px; }
+.bt-bi { padding: 8px 0; border-top: 1px solid rgba(127, 127, 127, .15); }
+.bt-bn { gap: 8px; }
+.bt-sr { margin-top: 6px; }
+.bt-sr .row { gap: 8px; align-items: center; }
+.bt-v { display: block; width: 100%; max-height: 260px; margin-top: 6px; border-radius: 8px; background: #000; }
+.bt-pick { width: auto; height: 28px; padding: 0 8px; font-size: 12px; }
+.bt-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: rgba(127, 127, 127, .5); }
+.bt-dot.st-run { background: #0a84ff; animation: bt-pulse 1.4s ease-in-out infinite; }
+.bt-dot.st-done { background: #34c759; }
+.bt-dot.st-done.warn { background: #ff9f0a; }
+.bt-dot.st-fail { background: #ff453a; }
+.bt-st.st-running { color: #0a84ff; }
+.bt-st.st-done { color: #34c759; }
+.bt-st.st-cancelled { opacity: .7; }
+.bt-vh { gap: 8px; margin-bottom: 4px; }
+.bt-vh .label { margin: 0; }
+@keyframes bt-pulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .bt-dot.st-run { animation: none; } }
+@media (max-width: 760px) { .bt-two { grid-template-columns: 1fr; gap: 0; } .bt-items { max-height: none; } }
+@media (pointer: coarse) { .bt-new .btn.small, .bt-b .btn.small { min-height: 40px; } }  /* 触屏：点按区域够大（2026-11-14 界面检查 pad768） */

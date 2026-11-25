@@ -1,0 +1,572 @@
+/* 手机改版（2026-11-16，方案见 docs/设计方案/手机改版_1116）。只在 html.ph（窄屏 + 触摸，phone.js 设）下生效，放在所有样式表最后。
+   第 1 步：外壳——字号、按下反馈、大标题、底栏上的播放条、底部面板（sheet）、长按菜单 */
+html.ph { -webkit-text-size-adjust: 100%; }
+html.ph body { overscroll-behavior-y: none; }
+/* 输入框至少 16px：小于 16px 时 iPhone 一点进去就放大整页 */
+html.ph :where(input:not([type=checkbox]):not([type=radio]):not([type=range]), textarea, select) { font-size: max(16px, 1em); }
+
+/* ---------- 大标题：往上滚时缩成标题栏中间的小标题（iOS 的大标题导航栏） ---------- */
+html.ph #main > .page-head { transition: background-color .2s, box-shadow .2s; top: var(--ph-stick, 0px) !important; padding-bottom: 2px !important; }
+html.ph #main > .page-head .page-title { font-size: 34px; font-weight: 700; letter-spacing: .2px; transition: transform .22s ease; transform-origin: left center; will-change: transform; }
+html.ph.ph-scrolled #main > .page-head { background: rgba(10, 10, 12, .82); -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6); box-shadow: 0 .5px 0 rgba(255, 255, 255, .12); }
+html.ph.ph-scrolled #main > .page-head .page-title { transform: translate(var(--ph-tx, 0px), var(--ph-ty, 0px)) scale(.5); }  /* 只缩放、平移到正中（高度不变，滚动时页面不跳） */
+html.ph[data-theme=light].ph-scrolled #main > .page-head { background: rgba(249, 249, 251, .82); box-shadow: 0 .5px 0 rgba(0, 0, 0, .12); }
+
+/* ---------- 播放条：底栏上面的附件（iOS 26 音乐 App）；没有在放的东西时不显示，不再收成 ♪ 圆钮 ---------- */
+html.ph #pb-fab { display: none !important; }
+html.ph .pbar.idle, html.ph.kb-open .pbar, html.ph.ph-kb .pbar, html.ph.ph-kb .rail { display: none !important; }
+/* 底栏离屏幕底边：贴着底部横条上面（原来 18px 太挤，2026-11-16 用户） */
+html.ph { --tab-b: max(14px, calc(env(safe-area-inset-bottom) - 4px)); }
+html.ph .pbar { left: 16px !important; right: 16px !important; bottom: calc(var(--ph-tab, 76px) + 8px) !important; height: 56px !important; padding: 0 8px 0 8px !important;
+  display: flex !important; align-items: center; gap: 4px; border-radius: 28px !important; overflow: hidden;
+  background: rgba(40, 40, 44, .72) !important; -webkit-backdrop-filter: blur(24px) saturate(1.6); backdrop-filter: blur(24px) saturate(1.6); box-shadow: 0 0 0 .5px rgba(255, 255, 255, .12) inset, 0 8px 24px rgba(0, 0, 0, .3) !important; }
+html.ph .pbar .pb-now { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 10px; }
+html.ph .pbar .pb-art { width: 40px !important; height: 40px !important; border-radius: 9px !important; flex: none; }
+html.ph .pbar .pb-meta { min-width: 0; }
+html.ph .pbar .pb-title { font-size: 15px !important; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.ph .pbar .pb-center { display: contents; }
+html.ph .pbar .pb-ctl { display: flex; align-items: center; gap: 0; order: 2; }
+html.ph .pbar .pb-ctl .pb-btn { width: 44px; height: 44px; }
+html.ph .pbar .pb-ctl [data-pb="back"], html.ph .pbar .pb-ctl [data-pb="fwd"], html.ph .pbar .pb-ctl [data-pb="prev"] { display: none !important; }
+html.ph .pbar .pb-right { display: none !important; }
+/* 进度：贴着播放条底边的一条细线 */
+html.ph .pbar .pb-prog { position: absolute; left: 22px; right: 22px; bottom: 3px; height: 2px; margin: 0; pointer-events: none; }
+html.ph .pbar .pb-prog .pb-t, html.ph .pbar .pb-prog .pb-knob { display: none !important; }
+html.ph .pbar .pb-prog .pb-track { height: 2px; background: rgba(255, 255, 255, .14); border-radius: 1px; }
+
+/* ---------- 底部面板（sheet）：phSheet.open() ---------- */
+.ph-sheet-bg { position: fixed; inset: 0; z-index: 1190; background: rgba(0, 0, 0, .4); opacity: 0; transition: opacity .28s ease; }
+.ph-sheet-bg.on { opacity: 1; }
+.ph-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 1191; max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 10px); display: flex; flex-direction: column;
+  background: #1c1c1e; color: var(--text, #fff); border-radius: 38px 38px 0 0; box-shadow: 0 -10px 40px rgba(0, 0, 0, .35);
+  transform: translateY(100%); transition: transform .38s cubic-bezier(.32, .72, 0, 1); padding-bottom: env(safe-area-inset-bottom, 0px); touch-action: pan-y; }
+.ph-sheet.on { transform: translateY(0); }
+.ph-sheet.drag { transition: none; }
+html[data-theme=light] .ph-sheet { background: #f2f2f7; }
+.ph-sheet-h { flex: none; padding: 6px 16px 8px; touch-action: none; }
+.ph-sheet-h::before { content: ""; display: block; width: 36px; height: 5px; border-radius: 3px; background: rgba(127, 127, 132, .55); margin: 0 auto 8px; }
+.ph-sheet-hr { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; min-height: 36px; }
+.ph-sheet-t { grid-column: 2; font-size: 17px; font-weight: 600; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60vw; }
+.ph-sheet-done { grid-column: 3; justify-self: end; border: 0; background: none; color: #0a84ff; font: 600 17px/1 inherit; padding: 10px 4px; min-height: 44px; }
+.ph-sheet-b { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 0 16px 16px; }
+/* 搬进面板的选项：去掉原来浮层的框和定位 */
+.ph-sheet-b > .ig-panel { position: static !important; inset: auto !important; width: auto !important; max-width: none !important; max-height: none !important; box-shadow: none !important; background: none !important; border: 0 !important; padding: 0 !important; margin: 0 !important; transform: none !important; }
+.ph-sheet-b > .ig-panel > .field > .label:first-child, .ph-sheet-b > .ig-panel > .field > .ig-enh-h > .label { font-size: 13px; color: var(--text-3, rgba(235, 235, 245, .6)); font-weight: 500; }
+@media (prefers-reduced-motion: reduce) { .ph-sheet, .ph-sheet-bg { transition: none; } }
+
+/* ---------- 长按菜单 / 点按钮弹出的菜单：iOS 的样子（圆角 14、每行 44、分隔线） ---------- */
+html.ph .ctx-menu { min-width: 220px; border-radius: 14px !important; padding: 0 !important; overflow: hidden; background: rgba(44, 44, 48, .86) !important; -webkit-backdrop-filter: blur(30px) saturate(1.8); backdrop-filter: blur(30px) saturate(1.8); box-shadow: 0 10px 40px rgba(0, 0, 0, .45) !important; }
+html.ph .ctx-menu > :where(button, a, .dd-it, [role=menuitem]) { min-height: 44px; padding: 11px 16px !important; font-size: 17px !important; border-radius: 0 !important; display: flex; align-items: center; gap: 12px; flex-direction: row-reverse; justify-content: space-between; }
+html.ph .ctx-menu > :where(button, a, .dd-it, [role=menuitem]) + :where(button, a, .dd-it, [role=menuitem]) { box-shadow: 0 -.5px 0 rgba(255, 255, 255, .12); }
+html.ph .ctx-menu > :where(button, a, .dd-it, [role=menuitem]) svg { width: 20px; height: 20px; flex: none; }
+html.ph .ctx-menu .ctx-sep { height: 8px; margin: 0 !important; background: rgba(0, 0, 0, .25); }
+/* 浅色 */
+html.ph[data-theme=light] .pbar { background: rgba(249, 249, 251, .78) !important; box-shadow: 0 0 0 .5px rgba(0, 0, 0, .1) inset, 0 8px 24px rgba(0, 0, 0, .12) !important; }
+html.ph[data-theme=light] .pbar .pb-prog .pb-track { background: rgba(0, 0, 0, .1); }
+html.ph[data-theme=light] .ctx-menu { background: rgba(250, 250, 252, .86) !important; }
+html.ph[data-theme=light] .ctx-menu > :where(button, a, .dd-it, [role=menuitem]) + :where(button, a, .dd-it, [role=menuitem]) { box-shadow: 0 -.5px 0 rgba(0, 0, 0, .12); }
+.ph-sheet-b [data-ph-hid] { display: none !important; }
+/* 手机上播放条不收起（收起后的 ♪ 圆钮不要了）：有东西在放就一直贴在底栏上面 */
+html.ph body.pb-min .pbar:not(.idle) { visibility: visible !important; opacity: 1 !important; transform: none !important; pointer-events: auto !important; }
+html.ph .pbar { width: auto !important; }
+html.ph .pbar .pb-play { background: none !important; color: var(--text, #fff) !important; box-shadow: none !important; width: 44px !important; height: 44px !important; }
+html.ph .pbar .pb-play svg { width: 26px; height: 26px; }
+html.ph .pbar .pb-prog .pb-track, html.ph .pbar .pb-prog .pb-fill { height: 2px !important; }
+html.ph .pbar .pb-prog .pb-track { flex: 1; overflow: hidden; }
+
+/* ======================================================================
+   第 2、3 步：生图、生视频（共用这套输入框）。data-ph-page = 当前页面
+   ====================================================================== */
+/* 输入框：固定在底部（底栏 + 播放条上面），上面一排选项胶囊，下面一行：＋ / 输入 / 发送 */
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f {
+  position: fixed !important; left: 10px; right: 10px; bottom: calc(var(--ph-tab, 76px) + var(--ph-acc, 0px) + 12px); z-index: 36; margin: 0 !important; width: auto !important;
+  display: flex !important; flex-direction: column; gap: 10px !important; background: none !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; transition: bottom .25s cubic-bezier(.32, .72, 0, 1); }
+html.ph.ph-kb:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f { bottom: calc(var(--ph-kb, 0px) + 8px); transition: none; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f > .label, html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f > .ig-note { display: none !important; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f > .ig-cbar { order: 0; background: none !important; border: 0 !important; padding: 0 !important; margin: 0 !important; min-height: 0; box-shadow: none !important; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f > .ig-composer { order: 1; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f > .ig-cbar > .bar-r { display: none !important; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f > .ig-cbar > .bar-l { flex-wrap: nowrap !important; overflow-x: auto !important; overflow-y: hidden !important; touch-action: pan-x; overscroll-behavior: contain; scrollbar-width: none; gap: 8px; padding: 1px 2px !important; width: 100%; height: 38px; align-items: center; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f > .ig-cbar { overflow: hidden !important; touch-action: pan-x; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f > .ig-cbar > .bar-l::-webkit-scrollbar { display: none; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f .ig-chips { flex-wrap: nowrap !important; gap: 6px; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f :is(.ig-chip, .ig-cb, .prompt-peek) {
+  height: 34px; min-height: 34px; border-radius: 17px !important; flex: none; background: rgba(40, 40, 44, .72) !important; border: 0 !important;
+  -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6); box-shadow: 0 0 0 .5px rgba(255, 255, 255, .12) inset !important; color: var(--text, #fff) !important; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f :is(.ig-cb, .prompt-peek) { width: 34px; padding: 0 !important; display: grid; place-items: center; position: static !important; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f .ig-chip { padding: 0 12px !important; font-size: 14px !important; font-weight: 500; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f .ig-composer {
+  border-radius: 26px !important; padding: 6px !important; background: rgba(40, 40, 44, .78) !important; border: 0 !important;
+  -webkit-backdrop-filter: blur(24px) saturate(1.6); backdrop-filter: blur(24px) saturate(1.6); box-shadow: 0 0 0 .5px rgba(255, 255, 255, .14) inset, 0 8px 30px rgba(0, 0, 0, .35) !important; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f .ig-crow { display: flex !important; align-items: flex-end; gap: 6px; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f .ig-srct { width: 38px !important; height: 38px !important; min-width: 38px; border-radius: 19px !important; flex: none; overflow: hidden; background: rgba(255, 255, 255, .1) !important; border: 0 !important; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f .ig-srct svg { width: 20px; height: 20px; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f .ig-srct img { width: 100%; height: 100%; object-fit: cover; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f .ig-crow > :is(.clr-wrap, .pi-wrap, textarea) { flex: 1 1 auto; min-width: 0; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f textarea {
+  min-height: 38px !important; height: auto; max-height: 140px !important; padding: 8px 4px !important; font-size: 17px !important; line-height: 22px; background: none !important; border: 0 !important; box-shadow: none !important; resize: none; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f .ig-crow > .ig-gen {
+  width: 38px !important; height: 38px !important; min-width: 38px; flex: none; border-radius: 19px !important; padding: 0 !important; display: grid !important; place-items: center; background: #fff !important; color: #000 !important; border: 0 !important; box-shadow: none !important; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f .ig-crow > .ig-gen > span { display: none; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f .ig-crow > .ig-gen svg { width: 20px; height: 20px; transform: rotate(-90deg); stroke-width: 2.6; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f .ig-crow > .ig-gen:disabled { opacity: .35; }
+html.ph[data-theme=light]:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f :is(.ig-composer, .ig-chip, .ig-cb, .prompt-peek) { background: rgba(249, 249, 251, .9) !important; box-shadow: 0 0 0 .5px rgba(0, 0, 0, .1) inset, 0 6px 20px rgba(0, 0, 0, .08) !important; }
+html.ph[data-theme=light]:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f .ig-crow > .ig-gen { background: #000 !important; color: #fff !important; }
+/* 页面底部让出输入框 + 播放条 + 底栏 */
+/* 页面底部让出输入框 + 播放条 + 底栏：#ph-spacer（phone.js 按它们在屏幕上的实际位置算高度） */
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main { padding-bottom: 0 !important; }
+#ph-spacer { flex: none; width: 100%; pointer-events: none; }
+
+/* 作品：照片 App 的三列方格，铺满到边；格子里只有图（操作：点开看大图，长按出菜单） */
+html.ph[data-ph-page=img] #main .ig-gal-card { background: none !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; margin: 0 -14px !important; border-radius: 0 !important; }
+html.ph[data-ph-page=img] #main .ig-gal-card > .row:first-child { padding: 0 16px 6px; }
+html.ph[data-ph-page=img] #main .ig-gal-card .card-title { font-size: 13px !important; font-weight: 500 !important; color: var(--text-3, rgba(235, 235, 245, .6)); }
+html.ph[data-ph-page=img] #main .ig-gal-card .card-title #ig-ttl { display: none; }
+html.ph[data-ph-page=img] #main .ig-gal { grid-template-columns: repeat(3, 1fr) !important; gap: 2px !important; margin-top: 0 !important; max-height: none !important; overflow: visible !important; }
+html.ph[data-ph-page=img] #main .ig-gal .ig-tile { aspect-ratio: 1 / 1; border-radius: 0 !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; background: #1c1c1e; outline: none !important; }
+html.ph[data-ph-page=img] #main .ig-gal .ig-tile img { width: 100%; height: 100%; object-fit: cover; border-radius: 0 !important; }
+html.ph[data-ph-page=img] #main .ig-gal .ig-tile :is(.ig-acts, .vd-meta, .vd-badges) { display: none !important; }
+html.ph[data-ph-page=img] #main .ig-gal .ig-tile .ig-badge { left: 6px; bottom: 6px; top: auto; right: auto; font-size: 11px; padding: 2px 6px; border-radius: 6px; background: rgba(0, 0, 0, .45); }
+html.ph[data-ph-page=img] #main .ig-gal > .ig-batch { padding: 14px 16px 6px; background: none !important; border: 0 !important; font-size: 13px; color: var(--text-3, rgba(235, 235, 245, .6)); }
+html.ph[data-ph-page=img] #main .ig-gal > .ig-batch .btn { display: none; }
+html.ph[data-ph-page=img] #main .ig-gal > .ig-empty { grid-column: 1 / -1; padding: 80px 0; }
+html.ph[data-ph-page=img] #main .ig-gal .ig-tile.on, html.ph[data-ph-page=img] #main .ig-gal .ig-tile.cur, html.ph[data-ph-page=img] #main .ig-gal .ig-tile[aria-current] { outline: none !important; box-shadow: none !important; }
+html.ph[data-ph-page=img] #main .ig-gal .ig-tile.on::after { display: none !important; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f .ig-srct { margin: 0 !important; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f .ig-crow { padding: 0 !important; margin: 0 !important; }
+/* 搬进面板的浮层（popover）：去掉浮层自己的框和定位 */
+.ph-sheet-b > .ph-pop { position: static !important; inset: auto !important; width: auto !important; max-width: none !important; max-height: none !important; box-shadow: none !important; background: none !important; border: 0 !important; padding: 0 !important; margin: 0 !important; transform: none !important; animation: none !important; opacity: 1 !important; }
+.ph-sheet-b > .ph-pop > .x { display: none; }
+/* 输入框里的小缩略图（38px）上不放 ×：点它打开“原图”面板，在面板里移除（× 盖住整张小图，一点就删了） */
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f .ig-srct .ig-srct-x { display: none !important; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f textarea:placeholder-shown { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f textarea::placeholder { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.ph[data-theme=light][data-ph-page=img] #main .ig-gal .ig-tile { background: #e5e5ea; }
+
+/* 生视频（第 3 步）：输入框里“本次使用”那行小字不放（选项胶囊上已经写着）；作品格子同生图：三列方格，只留时长和“一组几段” */
+html.ph[data-ph-page=video] #main .ig-top-f .vd-sum { display: none !important; }
+html.ph[data-ph-page=video] #main .ig-gal-card { background: none !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; margin: 0 -14px !important; border-radius: 0 !important; }
+html.ph[data-ph-page=video] #main .ig-gal-card > .row:first-child { padding: 0 16px 6px; }
+html.ph[data-ph-page=video] #main .ig-gal-card .card-title { font-size: 13px !important; font-weight: 500 !important; color: var(--text-3, rgba(235, 235, 245, .6)); }
+html.ph[data-ph-page=video] #main .ig-gal-card .card-title > span:first-child { display: none; }
+html.ph[data-ph-page=video] #main .vd-gal { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 2px !important; margin: 0 !important; max-height: none !important; overflow: visible !important; }
+html.ph[data-ph-page=video] #main .vd-gal > .vd-tile { aspect-ratio: 1 / 1; width: auto !important; height: auto !important; border-radius: 0 !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; border: 0 !important; background: #1c1c1e; outline: none !important; }
+html.ph[data-ph-page=video] #main .vd-gal > .vd-tile::before, html.ph[data-ph-page=video] #main .vd-gal > .vd-tile::after, html.ph[data-ph-page=video] #main .vd-gal > .vd-tile .gl-ring { display: none !important; }
+html.ph[data-ph-page=video] #main .vd-gal > .vd-tile > img, html.ph[data-ph-page=video] #main .vd-gal > .vd-tile > video { width: 100%; height: 100%; object-fit: cover; border-radius: 0 !important; }
+html.ph[data-ph-page=video] #main .vd-gal > .vd-tile :is(.vd-badges, .vd-play, .vd-acts) { display: none !important; }
+html.ph[data-ph-page=video] #main .vd-gal > .vd-tile .vd-meta { left: 6px !important; right: 6px !important; bottom: 5px !important; top: auto !important; font-size: 11px !important; padding: 0 !important; background: none !important; text-shadow: 0 1px 2px rgba(0, 0, 0, .6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.ph[data-theme=light][data-ph-page=video] #main .vd-gal > .vd-tile { background: #e5e5ea; }
+html.ph[data-ph-page=video] #main .vd-gal { padding: 0 !important; }
+
+/* ======================================================================
+   第 4 步：素材库
+   ====================================================================== */
+/* “组合”的三个格子和“去生图”平时不占标题栏：放了素材后变成贴在底栏上面的一条 */
+html.ph[data-ph-page=mats] #main > .page-head .gal-tray:not(:has(.gal-slot:not(.gal-empty))) { display: none !important; }
+html.ph[data-ph-page=mats] #main > .page-head .gal-tray:has(.gal-slot:not(.gal-empty)) {
+  position: fixed !important; left: 16px; right: 16px; bottom: calc(var(--ph-tab, 76px) + var(--ph-acc, 0px) + 10px); z-index: 37; height: 56px; padding: 0 8px 0 14px !important; margin: 0 !important;
+  display: flex !important; align-items: center; gap: 8px; border-radius: 28px; background: rgba(40, 40, 44, .78); -webkit-backdrop-filter: blur(24px) saturate(1.6); backdrop-filter: blur(24px) saturate(1.6); box-shadow: 0 0 0 .5px rgba(255, 255, 255, .12) inset, 0 8px 24px rgba(0, 0, 0, .3); }
+html.ph[data-ph-page=mats] #main > .page-head .gal-tray .gal-slot { width: 40px; height: 40px; border-radius: 10px; flex: none; }
+html.ph[data-ph-page=mats] #main > .page-head .gal-tray .btn.primary { margin-left: auto; height: 40px; border-radius: 20px !important; padding: 0 16px !important; }
+/* 11-16 选了素材、底部托盘出来时：图片区最下面留出托盘的高度（素材库整页锁住，只有图片区滚动） */
+html.ph[data-ph-page=mats] #main:has(.gal-tray .gal-slot:not(.gal-empty)) .gal-body { padding-bottom: 84px !important; }
+/* 内容铺满，不再是一张大卡片 */
+html.ph[data-ph-page=mats] #main .gal-page { background: none !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; border-radius: 0 !important; min-height: 0 !important; }
+html.ph[data-ph-page=mats] #main .gal-top { padding: 0 !important; border: 0 !important; margin-bottom: 8px; }
+html.ph[data-ph-page=mats] #main .gal-top::after, html.ph[data-ph-page=mats] #main .gal-t2 { border-bottom: 0 !important; }
+html.ph[data-ph-page=mats] #main .gal-t1 { gap: 8px !important; }
+html.ph[data-ph-page=mats] #main .gal-t1 .gal-tabs { flex: 1 1 auto; height: 36px; }
+html.ph[data-ph-page=mats] #main .gal-t1 > .btn, html.ph[data-ph-page=mats] #main .gal-t2 .btn { width: 36px; height: 36px; min-width: 36px; padding: 0 !important; border-radius: 18px !important; display: grid; place-items: center; }
+html.ph[data-ph-page=mats] #main .gal-wait { text-align: center; color: var(--text-3, rgba(235, 235, 245, .6)); padding: 60px 24px; font-size: 15px; line-height: 1.5; }
+/* 11-16 用户：素材库应该和电脑一样整页锁住，上面的筛选栏一直在上面，只有图片区滚动 */
+html.ph[data-ph-page=mats] #main .gal-body { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px) !important; }
+/* 文件夹（图集）里面：三列、格子一样大（3:4），铺满还是完整显示 + 光晕按 gallery.js 的 galVthMark（铺满只裁掉每边约 6% 以内就铺满）；不写文件名 */
+html.ph[data-ph-page=mats] #main .gal-grid:not(:has(.gal-fd)) { grid-template-columns: repeat(3, 1fr) !important; gap: 2px !important; margin: 0 !important; }
+/* 11-16 用户：图片区还能左右划。以前格子往两边各伸出 14px 贴边，比图片区宽、能横着滚；现在让图片区自己贴满屏幕宽，格子正好放下，只能上下滑 */
+html.ph[data-ph-page=mats] #main .gal-main { margin: 0 -14px !important; }
+html.ph[data-ph-page=mats] #main .gal-body { overflow-x: hidden !important; touch-action: pan-y; }
+html.ph[data-ph-page=mats] #main .gal-body > :not(.gal-grid), html.ph[data-ph-page=mats] #main .gal-grid:has(.gal-fd) { margin-left: 14px !important; margin-right: 14px !important; }
+html.ph[data-ph-page=mats] #main .gal-grid:not(:has(.gal-fd)) > .gal-card { padding: 0 !important; border-radius: 0 !important; background: none !important; }
+html.ph[data-ph-page=mats] #main .gal-grid:not(:has(.gal-fd)) > .gal-card .gal-im { aspect-ratio: 3 / 4; border-radius: 0 !important; overflow: hidden; }
+html.ph[data-ph-page=mats] #main .gal-grid:not(:has(.gal-fd)) > .gal-card .gal-cap { display: none !important; }
+
+/* 看大图（第 4 步）：手机上上面只留标题、“···”、关闭；常用操作在底部工具栏；缩略图条不放（左右滑换图） */
+html.ph .iv .iv-tools > :not(.iv-more):not([data-a=close]):not([data-a=info]) { display: none !important; }
+html.ph .iv .iv-tools .iv-z { display: none !important; }
+html.ph .iv .iv-nav, html.ph .iv.iv-hasbar .iv-strip { display: none !important; }
+html.ph .iv .iv-top { padding-top: calc(env(safe-area-inset-top, 0px) + 4px) !important; }
+html.ph .iv .iv-tools button { width: 40px; height: 40px; border-radius: 20px; }
+html.ph .iv .iv-bar { position: absolute; left: 16px; right: 16px; bottom: calc(env(safe-area-inset-bottom, 0px) + 6px); height: 60px; z-index: 5; display: flex; justify-content: space-around; align-items: center;
+  border-radius: 30px; background: rgba(40, 40, 44, .72); -webkit-backdrop-filter: blur(24px) saturate(1.6); backdrop-filter: blur(24px) saturate(1.6); box-shadow: 0 0 0 .5px rgba(255, 255, 255, .12) inset; transition: opacity .2s; }
+html.ph .iv .iv-bar[hidden] { display: none; }
+html.ph .iv .iv-bar button { flex: 1; height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border: 0; background: none; color: #fff; font-size: 11px; }
+html.ph .iv .iv-bar button svg { width: 22px; height: 22px; }
+html.ph .iv .iv-bar button.dg { color: #ff453a; }
+html.ph .iv.idle .iv-bar { opacity: 0; pointer-events: none; }
+html.ph .iv.iv-pull { background: rgba(0, 0, 0, var(--iv-bg, 1)) !important; }
+html.ph .iv.iv-pull :is(.iv-top, .iv-bar, .iv-strip) { opacity: 0; transition: opacity .15s; }
+/* 太小、不好点的：查看完整提示词的图标点按范围 36px；勾选框 26px */
+html.ph .prompt-peek { min-width: 36px; min-height: 36px; }
+html.ph #main input[type=checkbox]:not(.switch input) { width: 26px; height: 26px; flex: none; }
+
+/* 弹窗（第 4 步）：手机上从底部升起、铺满宽度（视频详情、图片详情、设置里的各种窗口）；确认框（m-alert）照旧居中 */
+html.ph .modal-bg { place-items: end center !important; padding: 0 !important; }
+html.ph .modal-bg:has(> .modal.m-alert) { place-items: center !important; }
+html.ph .modal-bg > .modal:not(.m-alert):not(#__) { width: 100% !important; max-width: none !important; margin: 0 !important; border-radius: 38px 38px 0 0 !important;
+  max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 44px) !important; padding: 26px 18px calc(env(safe-area-inset-bottom, 0px) + 18px) !important; overscroll-behavior: contain;
+  animation: ph-up .38s cubic-bezier(.32, .72, 0, 1) !important; position: relative; transition: transform .3s cubic-bezier(.32, .72, 0, 1); }
+html.ph .modal-bg > .modal:not(.m-alert):not(#__)::before { content: ""; position: sticky; top: -18px; display: block; width: 36px; height: 5px; border-radius: 3px; background: rgba(127, 127, 132, .55); margin: -14px auto 12px; z-index: 3; }
+html.ph .modal-bg > .modal.m-alert { width: min(300px, 86vw) !important; border-radius: 16px !important; }
+@keyframes ph-up { from { transform: translateY(100%); } }
+@media (prefers-reduced-motion: reduce) { html.ph .modal-bg > .modal:not(.m-alert):not(#__) { animation: none !important; } }
+/* AI 助手页：底部按底栏（和播放条）实际占的高度留，不用写死的 66px（底栏挪高以后 SE 上会被盖住一点） */
+html.ph .main[data-page="prompt"], html.ph body.pb-min .main[data-page="prompt"] { padding-bottom: calc(var(--ph-tab, 76px) + var(--ph-acc, 0px) + 8px) !important; }
+html.ph .main[data-page="prompt"] .pg-card { height: calc(100dvh - var(--ph-tab, 76px) - var(--ph-acc, 0px) - 8px) !important; }
+html.ph.kb-open .main[data-page="prompt"], html.ph.ph-kb .main[data-page="prompt"] { padding-bottom: 8px !important; }
+/* AI 助手页：键盘弹起时整块对话区变矮到键盘上沿（和生图输入框同一个办法：先抬起来，iOS 就不推整页） */
+html.ph.ph-kb .main[data-page="prompt"] .pg-card { height: calc(100dvh - var(--ph-kb, 0px) - 8px) !important; }
+
+
+/* 格子（11-16 第三版，用户：要一样大）：生图 / 生视频总览是正方形、裁满（照片 App）；点进图集再按 6% 铺满 / 光晕。
+   手指碰一下：图不放大、不挪（电脑上悬停放大 4% 的规则在手机上会被点按触发，看起来像裁剪的位置变了）；碰的时候开始放的预览视频和封面一样裁 */
+html.ph :is(.ig-tile, .vd-tile, .gal-card, .ig-ju, .vd-ju) img { transform: none !important; transition: none !important; }
+html.ph :is(.ig-tile, .vd-tile, .ig-ju, .vd-ju) > video { position: absolute; inset: 0; width: 100% !important; height: 100% !important; object-fit: cover !important; object-position: center !important; transform: none !important; }
+html.ph[data-ph-page=video] #main .vd-gal > .vd-tile > img { object-fit: cover !important; object-position: center !important; }
+html.ph[data-ph-page=img] #main .ig-gal .ig-tile img { object-position: center !important; }
+html.ph :is(.ig-gal .ig-tile, .vd-gal > .vd-tile, .gal-grid > .gal-card):active { transform: none !important; opacity: .72; transition: opacity 0s; }
+
+/* ======================================================================
+   侧栏导航（11-16 用户：参考 ChatGPT / Claude）：生图、生视频、AI 助手不显示底栏，页面在左边侧栏
+   ====================================================================== */
+html.ph.ph-dwp #rail { display: none !important; }
+.ph-menu-b { width: 40px; height: 40px; min-width: 40px; border-radius: 20px; border: 0; display: grid; place-items: center; flex: none; margin-right: 6px; color: var(--text, #fff);
+  background: rgba(40, 40, 44, .72); -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6); box-shadow: 0 0 0 .5px rgba(255, 255, 255, .12) inset; }
+.ph-menu-b svg { width: 22px; height: 22px; }
+html[data-theme=light] .ph-menu-b { background: rgba(249, 249, 251, .82); box-shadow: 0 0 0 .5px rgba(0, 0, 0, .1) inset; }
+html.ph #main > .page-head :is(.pg-titlew, .b5-l):has(> .ph-menu-b) { display: flex; align-items: center; }
+.ph-dw-scrim { position: fixed; inset: 0; z-index: 88; background: rgba(0, 0, 0, .4); opacity: 0; pointer-events: none; transition: opacity .3s; }
+body.ph-dw-open > .ph-dw-scrim { opacity: 1; pointer-events: auto; }
+.ph-dw { position: fixed; z-index: 89; top: 0; bottom: 0; left: 0; width: min(80vw, 330px); display: flex; flex-direction: column; overflow-y: auto; overscroll-behavior: contain;
+  padding: calc(env(safe-area-inset-top, 0px) + 10px) 12px calc(env(safe-area-inset-bottom, 0px) + 12px); background: #121214; box-shadow: 10px 0 40px rgba(0, 0, 0, .4);
+  transform: translateX(-102%); visibility: hidden; transition: transform .38s cubic-bezier(.32, .72, 0, 1), visibility 0s .38s; }
+body.ph-dw-open > .ph-dw { transform: none; visibility: visible; transition: transform .38s cubic-bezier(.32, .72, 0, 1), visibility 0s; }
+html[data-theme=light] .ph-dw { background: #fff; }
+.ph-dw-h { font-size: 22px; font-weight: 700; padding: 10px 10px 14px; }
+.ph-dw-nav { display: grid; gap: 2px; }
+.ph-dw-nav a { display: flex; align-items: center; gap: 14px; min-height: 48px; padding: 0 12px; border-radius: 14px; color: var(--text, #fff); text-decoration: none; font-size: 17px; }
+.ph-dw-nav a svg { width: 22px; height: 22px; flex: none; opacity: .85; }
+.ph-dw-nav a.on { background: rgba(127, 127, 132, .2); font-weight: 600; }
+.ph-dw-nav a:active { background: rgba(127, 127, 132, .14); }
+.ph-dw-foot { margin-top: auto; padding-top: 12px; display: grid; gap: 8px; }
+.ph-dw-foot .ph-dw-exit { color: #8b7bff; background: rgba(124, 92, 255, .12); }  /* 私密空间的颜色（和电脑侧栏的私密空间标签一样） */
+.ph-dw-foot button:active { filter: brightness(1.15); }
+.ph-dw-foot button { width: 100%; display: flex; align-items: center; gap: 14px; min-height: 48px; padding: 0 12px; border: 0; border-radius: 14px; background: rgba(127, 127, 132, .12); color: var(--text, #fff); font-size: 17px; }
+.ph-dw-foot button svg { width: 22px; height: 22px; }
+/* AI 助手的抽屉：最上面那一段页面列表，和下面的对话记录隔开 */
+body > #pg-hist > .ph-dw-nav { margin: 0 0 12px; padding-bottom: 12px; border-bottom: .5px solid rgba(127, 127, 132, .3); }
+@media (prefers-reduced-motion: reduce) { .ph-dw, body.ph-dw-open > .ph-dw, .ph-dw-scrim { transition: none; } }
+.ph-dw svg, body > #pg-hist > .ph-dw-nav svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+body > #pg-hist > .ph-dw-nav a { display: flex; align-items: center; gap: 14px; min-height: 46px; padding: 0 10px; border-radius: 12px; color: var(--text, #fff); text-decoration: none; font-size: 17px; }
+body > #pg-hist > .ph-dw-nav a.on { background: rgba(127, 127, 132, .2); font-weight: 600; }
+body > #pg-hist > .ph-dw-nav a svg { width: 22px; height: 22px; flex: none; }
+body > #pg-hist > .ph-dw-nav .ph-dw-more > summary { display: flex; align-items: center; gap: 14px; min-height: 46px; padding: 0 10px; border-radius: 12px; font-size: 17px; list-style: none; cursor: pointer; color: var(--text-2, rgba(235, 235, 245, .7)); }
+body > #pg-hist > .ph-dw-nav .ph-dw-more > summary::-webkit-details-marker { display: none; }
+body > #pg-hist > .ph-dw-nav .ph-dw-more > summary svg { width: 22px; height: 22px; flex: none; }
+
+/* ======================================================================
+   11-16 第二次：所有页面都用左边侧栏，底栏不要了；不显示返回键（每一页都是从侧栏进的）
+   ====================================================================== */
+html.ph #rail { display: none !important; }
+html.ph #main > .page-head .pg-back { display: none !important; }
+html.ph #main:not([data-page=img]):not([data-page=video]):not([data-page=prompt]) { padding-bottom: calc(var(--ph-tab, 34px) + var(--ph-acc, 0px) + 24px) !important; }
+html.ph #main > .page-head .b5-l { display: flex; align-items: center; gap: 0; min-width: 0; }
+/* 换声 / 转文字 / 改录音的“记录”：按钮放到标题栏右边，抽屉从右边出来（左边留给页面侧栏） */
+html.ph #main > .page-head > .m-dw-b { order: 99; margin: 0 0 0 auto !important; width: 40px; height: 40px; border-radius: 20px; background: rgba(40, 40, 44, .72); box-shadow: 0 0 0 .5px rgba(255, 255, 255, .12) inset; }
+html.ph[data-theme=light] #main > .page-head > .m-dw-b { background: rgba(249, 249, 251, .82); box-shadow: 0 0 0 .5px rgba(0, 0, 0, .1) inset; }
+html.ph .m-dw { left: auto !important; right: 0 !important; transform: translateX(102%) !important; }
+html.ph body.mdw-open .m-dw { transform: none !important; }
+html.ph body.mdw-open .m-dw-scrim { left: 0 !important; right: min(80vw, 340px) !important; }
+html.ph body.mdw-on #main, html.ph body.mdw-open #main { transform: none !important; }
+
+/* 输入框上面那排：图标工具收进“⋯”（11-16 用户：太密）；右边渐隐，看得出还能往右滑 */
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f .ig-cbar > .bar-l > :is(.ig-cb:not(.ph-more-b):not(#ig-enh-q):not(#ig-enh-undo), .prompt-peek),
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f .ig-chips > .ig-chip.ph-tool { display: none !important; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f .ig-cbar > .bar-l { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent); padding-right: 24px !important; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f .ph-more-b svg { width: 18px; height: 18px; }
+.ph-tools { display: grid; background: rgba(127, 127, 132, .12); border-radius: 14px; overflow: hidden; }
+.ph-tools > button { display: flex; align-items: center; gap: 14px; min-height: 52px; padding: 0 16px; border: 0; background: none; color: var(--text, #fff); font-size: 17px; text-align: left; }
+.ph-tools > button + button { box-shadow: 0 -.5px 0 rgba(127, 127, 132, .35); }
+.ph-tools > button > svg:first-child { width: 22px; height: 22px; flex: none; }
+.ph-tools > button > span { flex: 1; }
+.ph-tools > button > .chev { width: 16px; height: 16px; opacity: .45; }
+.ph-tools > button:active { background: rgba(127, 127, 132, .18); }
+/* 看大图（11-16 检查）：纯黑底（以前能透出后面的页面）；上面那条加深色渐变，标题不直接压在图上 */
+html.ph .iv { background: #000 !important; }
+html.ph .iv .iv-top { background: linear-gradient(rgba(0, 0, 0, .78) 55%, transparent) !important; padding: calc(env(safe-area-inset-top, 0px) + 6px) 14px 22px !important; left: 0 !important; right: 0 !important; top: 0 !important; align-items: flex-start; }
+html.ph .iv .iv-tools { background: none !important; box-shadow: none !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; gap: 4px; }
+html.ph .iv .iv-tools button { background: rgba(40, 40, 44, .72) !important; }
+html.ph .iv .iv-title b { font-size: 15px; }
+
+/* ---------- 11-16 全面检查第一轮 ---------- */
+/* E 标题：生视频的标题（下拉）和别的页面一样大；“80 张 / 23 段”和标题文字对齐（≡ 40 + 6） */
+html.ph #main > .page-head .b5-ctx { font-size: 30px !important; font-weight: 700 !important; letter-spacing: .2px; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-gal-card > .row:first-child { padding-left: 60px !important; }
+/* G “设置”面板（侧栏底部）里不再重复列页面（页面都在侧栏里） */
+html.ph .ph-sheet .gp-pages { display: none !important; }
+/* H 播放页搜索框：放大镜被输入框盖住了 */
+html.ph .play-search > span:first-child { z-index: 2; pointer-events: none; left: 14px; }  /* 第二个 span 是清空按钮的外框（clr-wrap），不能动 */
+html.ph .play-search .input { padding-left: 40px !important; }
+/* I 尺寸面板：“生成数量”那排和上面一样占满宽度 */
+html.ph .ph-sheet-b > .ig-panel .seg:has(> button), html.ph .ph-sheet-b > .ig-panel .field:has(> .seg) { width: 100%; }  /* 只管输入框那几个面板（“设置”面板里的分段控件和名字在同一行，不能撑满） */
+html.ph .ph-sheet-b > .ig-panel .seg:has(> button) > button { flex: 1 1 0; }
+/* J 原图面板：图放大（涂抹要看得清），图下面那行字居中 */
+html.ph .ph-sheet-b #ig-src-f .ig-src:not(.empty) { width: fit-content !important; max-width: 100% !important; height: auto !important; margin: 4px auto 0 !important; }
+html.ph .ph-sheet-b #ig-src-f .ig-src:not(.empty) > img { display: block; width: auto !important; height: auto !important; max-width: 100% !important; max-height: 52vh !important; }
+html.ph .ph-sheet-b #ig-src-f .ig-src:not(.empty) + .tiny { text-align: center; }
+/* M 素材库：最上一层时“回退”按钮没用，不占位置 */
+html.ph[data-ph-page=mats] #main .gal-back:disabled { display: none !important; }
+.ph-tools > button > .ph-tool-st { font-style: normal; color: var(--text-3, rgba(235, 235, 245, .6)); font-size: 15px; }
+/* 视频详情的操作：四列一样大的格子（图标在上、字在下），不再挤成三行长短不一的按钮 */
+html.ph .modal.vd-view .row:has(> .btn.small) { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px !important; }
+html.ph .modal.vd-view .row:has(> .btn.small) > .btn.small { flex-direction: column; justify-content: center; gap: 4px; height: 62px; padding: 6px 4px !important; font-size: 12px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0 !important; }
+html.ph .modal.vd-view .row:has(> .btn.small) > .btn.small svg { width: 20px; height: 20px; margin: 0 !important; }
+html.ph .modal.vd-view .row:has(> .btn.small) > .spacer { display: none; }
+/* 换声：“开始换声”和别的页面一样整行宽（以前缩在右边）*/
+html.ph #main .vc-bar { flex-wrap: wrap !important; }
+html.ph #main .vc-bar #vc-go { flex: 1 1 100% !important; width: 100% !important; margin-left: 0 !important; }
+/* 自动检查第一轮：播放页“全部展开 / 收起”两个按钮隔开；生视频标题栏 ≡ 和标题下拉不叠；配音那排小按钮隔开 */
+html.ph .ps-allbtn + .ps-allbtn { margin-left: 8px !important; }
+html.ph #main > .page-head .b5-l > .b5-ctx { margin-left: 0 !important; }
+html.ph #main > .page-head .b5-l > .ph-menu-b { margin-right: 8px; }
+html.ph #main .ins-tool + .ins-tool { margin-left: 3px; }
+html.ph .iv .iv-tools { gap: 8px !important; }
+/* “⋯”在那排胶囊外面、最右边 */
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f > .ig-cbar { display: flex !important; align-items: center; gap: 8px; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f > .ig-cbar > .bar-l { flex: 1 1 auto; min-width: 0; width: auto !important; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f > .ig-cbar > .ph-more-b { flex: none; width: 34px; height: 34px; border-radius: 17px !important; display: grid !important; place-items: center; padding: 0 !important;
+  background: rgba(40, 40, 44, .72) !important; -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6); box-shadow: 0 0 0 .5px rgba(255, 255, 255, .12) inset !important; color: var(--text, #fff) !important; border: 0 !important; }
+html.ph[data-theme=light]:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f > .ig-cbar > .ph-more-b { background: rgba(249, 249, 251, .82) !important; box-shadow: 0 0 0 .5px rgba(0, 0, 0, .1) inset, 0 6px 20px rgba(0, 0, 0, .08) !important; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f .ig-cbar > .bar-l > #vd-lang { display: none !important; }
+.ph-tools > button > svg:first-child:empty, .ph-tools > button:not(:has(> svg:first-child)) { padding-left: 16px; }
+/* 标题旁的“?”和标题竖着居中对齐；收起后的标题栏更不透明，后面的内容不透出来 */
+html.ph #main > .page-head .page-title { display: flex; align-items: center; gap: 6px; }
+html.ph.ph-scrolled #main > .page-head { background: rgba(10, 10, 12, .94) !important; }
+html.ph[data-theme=light].ph-scrolled #main > .page-head { background: rgba(249, 249, 251, .94) !important; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f > .ig-cbar { flex-wrap: nowrap !important; }
+
+/* ---------- 11-16 侧栏跟着手指走（phone.js 逐帧设位置） ---------- */
+/* 遮罩在页面上、圆角框下面；圆角框外面一圈涂成侧栏底色，盖住被推开的页面的四个角 */
+html.ph .ph-dw-scrim { z-index: 87; background: rgba(0, 0, 0, .32); }
+.ph-dw-frame { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; z-index: 88; pointer-events: none; display: none;
+  box-shadow: 0 0 0 .5px rgba(127, 127, 132, .32), 0 0 0 120px var(--dwbg, #121214); }
+/* AI 助手页的抽屉也交给 phone.js：不再用 b5.css 里给整页加 transform 的那套（会把输入框钉住） */
+html.ph body:has(> #pg-hist) #main, html.ph body:has(> #pg-hist) .rail { transition: none !important; }
+html.ph body.pg-hist-open:has(> #pg-hist) #main { transform: none !important; border-radius: 0 !important; overflow: visible !important; box-shadow: none !important; }
+html.ph body.pg-hist-open:has(> #pg-hist) .rail { transform: none !important; }
+html.ph body.pg-hist-open .pg-scrim { display: none !important; }
+body.pg-hist-open > .ph-dw-scrim { pointer-events: auto; }
+/* 11-16 素材库整页锁住、只有图片区滚动（和电脑一样，用户要的）。别的页面一定不被这把锁锁住：用 html 上的 data-ph-page，
+   不靠 :has——iOS 换页后 :has 有时不重新算，锁会留到别的页面 */
+html.ph[data-ph-page]:not([data-ph-page=mats]):not([data-ph-page=prompt]):not(:has(> body:is(.mdw-open, .np-open, .pg-hist-open))), html.ph[data-ph-page]:not([data-ph-page=mats]):not([data-ph-page=prompt]):not(:has(> body:is(.mdw-open, .np-open, .pg-hist-open))) > body { overflow-y: visible !important; }  /* 只放开竖着的：横着保持原来的 clip（页面不能左右晃） */
+
+/* ---------- 11-16 素材库顶部重排（用户：按钮太小、不好点）----------
+   按 Apple HIG：能点的地方至少 44×44、彼此隔开 8px 以上。四行：
+   ① 标题行（≡ 素材库）② 姿势 / 衣服 / 脸 / 文件夹 一整条分段控件
+   ③ 回退 · 快捷位置…… 搜索 · 筛选　④ 路径 …… 排序 · @ · 多选；多选时操作单独一行
+   素材库页面和生图里点“+”打开的选素材窗口共用 */
+html.ph .ph-menu-b { width: 44px; height: 44px; min-width: 44px; border-radius: 22px; }
+html.ph :is(#main, .gal-m) .gal-root .gal-t1 { display: flex !important; flex-wrap: wrap !important; align-items: center !important; gap: 10px !important; position: relative; }
+html.ph :is(#main, .gal-m) .gal-root .gal-t1 > .gal-tabs { order: -1; flex: 1 1 100% !important; width: 100% !important; min-width: 0 !important; height: 44px !important; padding: 0 !important; border-radius: 13px !important; display: flex !important; }
+html.ph :is(#main, .gal-m) .gal-root .gal-t1 > .gal-tabs > button { flex: 1 1 0 !important; min-width: 0 !important; height: 44px !important; min-height: 44px !important; padding: 0 4px !important; font-size: 16px !important; font-weight: 500;
+  border: 3px solid transparent !important; border-radius: 13px !important; background-clip: padding-box !important; box-shadow: none !important; }
+html.ph :is(#main, .gal-m) .gal-root .gal-t1 > .gal-tabs > button.on { font-weight: 600; }
+/* ③ 圆形图标按钮：回退、搜索、筛选、角色组合 */
+html.ph :is(#main, .gal-m) .gal-root .gal-t1 > .btn { width: 44px !important; height: 44px !important; min-width: 44px !important; min-height: 44px !important; padding: 0 !important; border-radius: 22px !important; display: grid !important; place-items: center; flex: none; position: relative; }
+html.ph :is(#main, .gal-m) .gal-root .gal-t1 > .btn[hidden], html.ph :is(#main, .gal-m) .gal-root .gal-t1 > .btn:disabled { display: none !important; }
+html.ph :is(#main, .gal-m) .gal-root .gal-t1 > .btn svg { width: 20px; height: 20px; }
+html.ph :is(#main, .gal-m) .gal-root .gal-t1 > .btn > span:not(.gal-fn) { display: none; }
+html.ph :is(#main, .gal-m) .gal-root .gal-t1 > .btn > .gal-fn:not([hidden]) { position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; font-size: 11px; line-height: 16px; background: var(--blue, #0a84ff); color: #fff; }
+html.ph :is(#main, .gal-m) .gal-root .gal-t1 > .spacer { flex: 1 1 0; min-width: 0; }
+html.ph :is(#main, .gal-m) .gal-root .gal-t1 > .gal-qk { max-width: none !important; padding: 0 !important; height: 44px; border-radius: 13px !important; display: flex !important; align-items: stretch; gap: 0 !important; flex: none; overflow: visible; }
+html.ph :is(#main, .gal-m) .gal-root .gal-t1 > .gal-qk[hidden] { display: none !important; }
+html.ph :is(#main, .gal-m) .gal-root .gal-qki { width: 48px !important; height: 44px !important; border: 3px solid transparent !important; border-radius: 13px !important; background-clip: padding-box !important; box-shadow: none !important; }
+html.ph :is(#main, .gal-m) .gal-root .gal-qki img { width: 28px !important; height: 28px !important; }
+html.ph :is(#main, .gal-m) .gal-root .gal-qki.gal-qkt { width: auto !important; padding: 0 12px !important; line-height: 38px !important; font-size: 15px !important; }
+/* 搜索：点开后占 ③ 这一整行（不再盖住上面的分段控件）；16px 字，iOS 聚焦时不放大页面 */
+html.ph :is(#main, .gal-m) .gal-root.gal-qon .gal-t1 > :not(.gal-tabs):not(.gal-q) { display: none !important; }
+html.ph :is(#main, .gal-m) .gal-root.gal-qon .gal-t1 > .gal-q { display: block !important; position: static !important; flex: 1 1 100% !important; max-width: none !important; }
+html.ph :is(#main, .gal-m) .gal-root .gal-q .input { height: 44px !important; border-radius: 22px !important; font-size: 16px !important; padding: 0 16px !important; }
+/* ④ 路径 + 排序 / @ / 多选 */
+html.ph :is(#main, .gal-m) .gal-root .gal-t2 { display: flex !important; flex-wrap: wrap !important; align-items: center !important; gap: 10px !important; margin-top: 10px; padding: 0 !important; }
+html.ph :is(#main, .gal-m) .gal-root .gal-t2:empty { display: none !important; }
+html.ph :is(#main, .gal-m) .gal-root .gal-t2 .gal-path { flex: 1 1 0 !important; min-width: 0 !important; height: 44px; display: flex; align-items: center; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; white-space: nowrap; gap: 2px; font-size: 15px; }
+html.ph :is(#main, .gal-m) .gal-root .gal-t2 .gal-path::-webkit-scrollbar { display: none; }
+html.ph :is(#main, .gal-m) .gal-root .gal-t2 .gal-path .vd-link { min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center; padding: 0 4px; font-size: 15px; max-width: 9em; overflow: hidden; text-overflow: ellipsis; flex: none; }
+html.ph :is(#main, .gal-m) .gal-root .gal-t2 .gal-path > span { color: var(--text-3, rgba(235, 235, 245, .45)); flex: none; }
+html.ph :is(#main, .gal-m) .gal-root .gal-t2 :is(.gal-fopts, .gal-facts) { flex: none !important; display: flex !important; flex-wrap: nowrap !important; gap: 10px !important; align-items: center; margin: 0 !important; }
+html.ph :is(#main, .gal-m) .gal-root .gal-t2 :is(.gal-fopts, .gal-facts) > .btn { width: 44px !important; height: 44px !important; min-width: 44px !important; min-height: 44px !important; padding: 0 !important; border-radius: 22px !important; display: grid !important; place-items: center; }
+html.ph :is(#main, .gal-m) .gal-root .gal-t2 :is(.gal-fopts, .gal-facts) svg { width: 20px; height: 20px; }
+html.ph :is(#main, .gal-m) .gal-root .gal-t2 .gal-at { font-size: 18px !important; }
+html.ph :is(#main, .gal-m) .gal-root .gal-t2 .gal-ftag-on { min-height: 44px; border-radius: 22px; padding: 0 14px; font-size: 15px; }
+/* 多选：操作单独一行（已选 n 项 …… 全选 移动 批量 删除 完成），图标按钮的字只给读屏 */
+html.ph :is(#main, .gal-m) .gal-root .gal-t2 .gal-facts:has(.gal-seln) { flex: 1 1 100% !important; order: 5; }
+html.ph :is(#main, .gal-m) .gal-root .gal-t2 .gal-facts .gal-seln { margin-right: auto; font-size: 15px; white-space: nowrap; }
+html.ph :is(#main, .gal-m) .gal-root .gal-t2 .gal-facts > .btn:has(> svg) > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+html.ph :is(#main, .gal-m) .gal-root .gal-t2 .gal-facts > .btn:not(:has(> svg)) { width: auto !important; padding: 0 16px !important; font-size: 15px !important; }
+html.ph :is(#main, .gal-m) .gal-root .gal-t2 .gal-facts > [data-fa=done] { background: var(--blue, #0a84ff) !important; color: #fff !important; font-weight: 600; }
+/* 姿势 / 衣服 / 脸 的细分类标签（全部 / 正面 …）：44 高的胶囊，一行左右滑 */
+html.ph :is(#main, .gal-m) .gal-root .gal-t2 .gal-ctabs { flex: 1 1 100% !important; min-width: 0; display: flex !important; flex-wrap: nowrap !important; gap: 8px !important; overflow-x: auto; scrollbar-width: none; border: 0 !important; }
+html.ph :is(#main, .gal-m) .gal-root .gal-t2 .gal-ctabs::-webkit-scrollbar { display: none; }
+html.ph :is(#main, .gal-m) .gal-root .gal-t2 .gal-ctab { flex: none; min-height: 44px; min-width: 44px; padding: 0 16px !important; border-radius: 22px !important; font-size: 15px !important; border: 0 !important; background: rgba(127, 127, 132, .14) !important; color: var(--text, #fff) !important; }
+html.ph :is(#main, .gal-m) .gal-root .gal-t2 .gal-ctab.on { background: var(--text, #fff) !important; color: var(--canvas, #000) !important; font-weight: 600; }
+html.ph :is(#main, .gal-m) .gal-root .gal-t2 .gal-tags .gal-tag { min-height: 40px; border-radius: 20px; padding: 0 14px; font-size: 15px; }
+
+/* 11-16 用户：格子里的图不是居中，是从上往下放、只裁掉下面。格子靠 aspect-ratio 撑出 3:4，里面的图 height: 100% 算不出来，
+   图按自己的比例变高、被格子从下面裁掉——铺满的没有居中、完整显示的下面也被裁。图钉满格子四边，再按 galVthMark 的规矩铺满（居中裁）或完整显示 + 光晕 */
+html.ph :is(#main, .gal-m) .gal-fim { position: relative; }
+html.ph :is(#main, .gal-m) .gal-fim > :is(img, video) { position: absolute !important; inset: 0 !important; width: 100% !important; height: 100% !important; object-position: 50% 50% !important; z-index: 1; }
+
+/* ---------- 11-16 标题栏改成一行（用户：上面占地方太多、不对称、标题挤在左上角；参考 Claude 和 iOS 26） ----------
+   状态栏下面一行：左边 ≡（玻璃圆钮）· 正中页面名（17px，iOS 导航栏标题；生视频 / 改视频那个能点的做成带 ▾ 的玻璃胶囊，像 Claude 的会话胶囊）·
+   右边这页的按钮（玻璃圆钮，几个放一起就是一个胶囊）。三栏 1fr auto 1fr：标题永远在屏幕正中，左右对称。不再有大标题、往上滚也不用缩 */
+html.ph:not([data-ph-page=prompt]) #main > .page-head:not(:empty), html.ph.ph-scrolled:not([data-ph-page=prompt]) #main > .page-head:not(:empty) { position: sticky !important; top: 0 !important; z-index: 30;
+  display: grid !important; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; column-gap: 8px; row-gap: 10px;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 16px) !important; padding-bottom: 10px !important; min-height: 0 !important; background: var(--canvas, #0a0a0c) !important;  /* 11-17 用户：离状态栏太近，改成截图那样（按钮上沿在安全区下面约 16pt） */
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important; box-shadow: none !important; }
+html.ph[data-theme=light]:not([data-ph-page=prompt]) #main > .page-head:not(:empty), html.ph[data-theme=light].ph-scrolled:not([data-ph-page=prompt]) #main > .page-head:not(:empty) { background: var(--canvas, #f5f5f7) !important; }
+html.ph #main > .page-head :is(.pg-titlew, .b5-l) { display: contents !important; }
+html.ph #main > .page-head .ph-menu-b { grid-column: 1; grid-row: 1; justify-self: start; margin: 0 !important; }
+html.ph #main > .page-head .page-title, html.ph.ph-scrolled #main > .page-head .page-title { grid-column: 2; grid-row: 1; justify-self: center; margin: 0 !important; transform: none !important;
+  font-size: 17px !important; font-weight: 600 !important; letter-spacing: 0 !important; line-height: 44px !important; max-width: 56vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.ph #main > .page-head .page-title .tip-q { flex: none; align-self: center; margin: 0 !important; transform: none !important; position: static !important; width: 22px; height: 22px; line-height: 22px !important; display: inline-grid !important; place-items: center; font-size: 13px !important; font-weight: 600; }  /* AI 助手页用它自己的顶栏（不动） */
+/* 生视频 / 改视频：能点的标题 = 玻璃胶囊 + ▾ */
+html.ph #main > .page-head .b5-ctx { grid-column: 2; grid-row: 1; justify-self: center; height: 44px !important; padding: 0 14px 0 18px !important; margin: 0 !important; border-radius: 22px !important; gap: 6px;
+  font-size: 17px !important; font-weight: 600 !important; letter-spacing: 0 !important; max-width: 60vw; }
+html.ph #main > .page-head .b5-ctx > span { font-size: 17px !important; line-height: 44px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html.ph #main > .page-head .b5-ctx svg { width: 14px; height: 14px; opacity: .7; }
+/* 右边：这页的按钮 */
+html.ph #main > .page-head > :is(.b5-acts, .m-dw-b, #v-new, #llm-set, .ph-locate) { grid-column: 3; grid-row: 1; justify-self: end; margin: 0 !important; }
+html.ph #main > .page-head > #llm-set { margin-right: 52px !important; }  /* 语音转文字：右边有“记录”和“校对设置”两个 */
+html.ph #main > .page-head :is(.ph-menu-b, .b5-ctx, .m-dw-b, #v-new, #llm-set, .ph-locate), html.ph #main > .page-head .b5-acts:has(> :not([hidden])) {
+  background: rgba(40, 40, 44, .72) !important; -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6); box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .12) !important; border: 0 !important; color: var(--text, #fff) !important; }
+html.ph[data-theme=light] #main > .page-head :is(.ph-menu-b, .b5-ctx, .m-dw-b, #v-new, #llm-set, .ph-locate), html.ph[data-theme=light] #main > .page-head .b5-acts:has(> :not([hidden])) {
+  background: rgba(249, 249, 251, .82) !important; box-shadow: inset 0 0 0 .5px rgba(0, 0, 0, .1), 0 1px 3px rgba(0, 0, 0, .06) !important; }
+html.ph #main > .page-head :is(.m-dw-b, #v-new, #llm-set, .ph-locate) { width: 44px !important; height: 44px !important; min-width: 44px !important; padding: 0 !important; border-radius: 22px !important; display: grid !important; place-items: center; }
+html.ph #main > .page-head .b5-acts { display: flex !important; align-items: center; gap: 0 !important; height: 44px; border-radius: 22px; padding: 0 !important; }
+html.ph #main > .page-head .b5-acts > .b5-ib { width: 44px !important; height: 44px !important; min-width: 44px; border-radius: 22px !important; background: none !important; box-shadow: none !important; border: 0 !important; display: grid; place-items: center; }
+html.ph #main > .page-head :is(.b5-ib, .m-dw-b, #v-new, #llm-set, .ph-locate) svg { width: 20px !important; height: 20px !important; }
+/* 文字按钮（新建音色、校对设置）在手机标题栏上只放图标，字留给读屏（phone.js 补图标、aria-label） */
+html.ph #main > .page-head :is(#v-new, #llm-set) > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* “80 张 / 23 段”不用再和大标题对齐 */
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-gal-card > .row:first-child { padding-left: 0 !important; }
+
+/* ---------- 11-16 用户：手机上放大视频也成了从下面升起的面板，要和放大图片一样 ----------
+   全屏黑底（深色，不跟浅色主题）；视频占满第一屏，标题 + × 在上面；下面露出一点操作按钮，往下滚是操作、参数、提示词（像照片 App 往上划看信息）；
+   往下拉关闭（画面上也行），跟着手缩小、背景变淡。生视频的详情、改视频的“原视频放大”都是这个；生图的详情（ig-dview）不变 */
+@keyframes ph-vd-in { from { opacity: 0; transform: scale(.96); } }
+html.ph .modal-bg:has(> .modal.vd-view:not(.ig-dview)) { background: #000 !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; padding: 0 !important; }
+html.ph .modal-bg > .modal.vd-view:not(.ig-dview):not(#__) { position: fixed !important; inset: 0 !important; width: 100vw !important; max-width: none !important; height: 100dvh !important; max-height: none !important;
+  margin: 0 !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; background: #000 !important; color: #fff;
+  padding: calc(env(safe-area-inset-top, 0px) + 4px) 16px calc(env(safe-area-inset-bottom, 0px) + 18px) !important; overflow-y: auto !important; overscroll-behavior: contain;
+  display: flex !important; flex-direction: column; animation: ph-vd-in .22s ease-out !important; color-scheme: dark;
+  --text: #fff; --text-2: rgba(235, 235, 245, .62); --text-3: rgba(235, 235, 245, .42); --card: #1c1c1e; --field: rgba(118, 118, 128, .24); --line: rgba(255, 255, 255, .12); }
+html.ph .modal-bg > .modal.vd-view:not(.ig-dview):not(#__)::before { display: none !important; }  /* 不要面板上面那根拉条 */
+html.ph .modal.vd-view:not(.ig-dview) > .row.between:first-child { order: 0; flex: none; min-height: 44px; margin-bottom: 6px !important; }
+html.ph .modal.vd-view:not(.ig-dview) > .row.between:first-child .card-title { font-size: 17px !important; font-weight: 600; color: #fff !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+html.ph .modal.vd-view:not(.ig-dview) [data-close] { width: 44px !important; height: 44px !important; border-radius: 22px !important; background: rgba(118, 118, 128, .3) !important; color: #fff !important; display: grid !important; place-items: center; flex: none; }
+html.ph .modal.vd-view:not(.ig-dview) .vd-player { order: 1; flex: none; display: block; width: calc(100% + 32px) !important; margin: 0 -16px 14px !important; border-radius: 0 !important; background: #000;
+  height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 170px) !important; max-height: none !important; object-fit: contain; }
+html.ph .modal.vd-view:not(.ig-dview) > .row:has(> .btn.small) { order: 2; margin-top: 0 !important; }
+html.ph .modal.vd-view:not(.ig-dview) > :not(.row.between):not(.vd-player):not(.row:has(> .btn.small)) { order: 3; }
+html.ph .modal.vd-view:not(.ig-dview) .btn { background: rgba(118, 118, 128, .24) !important; color: #fff !important; border: 0 !important; box-shadow: none !important; }
+html.ph .modal.vd-view:not(.ig-dview) .vd-kv, html.ph .modal.vd-view:not(.ig-dview) .vd-prompt { margin-top: 16px; color: rgba(235, 235, 245, .8); }
+@media (prefers-reduced-motion: reduce) { html.ph .modal-bg > .modal.vd-view:not(.ig-dview):not(#__) { animation: none !important; } }
+
+/* 往下拉关掉的弹窗已经滑出去了：关的时候不再放原来的缩小动画（动画会盖过滑动的位置，跳一下） */
+html.ph .modal-bg.out > .modal.ph-slid { animation: none !important; }
+
+html.ph #main > .page-head > .ph-locate[hidden] { display: none !important; }
+/* 11-16 用户：搜索框下面有一层东西——标题栏下面那 12px 渐隐让后面列表卡片的边透出来，像多了一层。标题栏改成实色，内容滚到它下面时只有一根细线（iOS 导航栏） */
+html.ph.ph-scrolled:not([data-ph-page=prompt]) #main > .page-head:not(:empty) { box-shadow: 0 .5px 0 rgba(255, 255, 255, .12) !important; }
+html.ph[data-theme=light].ph-scrolled:not([data-ph-page=prompt]) #main > .page-head:not(:empty) { box-shadow: 0 .5px 0 rgba(0, 0, 0, .12) !important; }
+/* 11-16 用户：滑动时手指先按住的那个文件会高亮。列表行、格子按下的样子晚 0.12 秒才出来：手指一动就是在滚动，iOS 会先取消按下，就不会闪一下；
+   按住不动（包括长按出菜单）照样高亮。松开时马上恢复 */
+/* 11-16 第二次（用户：按着慢慢滑还是会亮）：不再靠 :active。按下的样子改成 phone.js 加的 .ph-press——手指不动（6px 以内）0.2 秒后才亮，
+   一动就灭；点一下松手时亮一下。:active 的样子推到 600 秒以后（等于不出现） */
+html.ph :is(.pl-row, .pl-card, .ps-item, .work, .rec, .lp-it, .vp, .ig-tile, .img-tile, .vd-tile, .gal-card, .gal-fd):active:not(.ph-press) { transition-delay: 600s !important; transition-duration: 0s !important; }
+html.ph :is(.pl-row, .pl-card, .ps-item, .work, .rec, .lp-it, .vp, .ig-tile, .img-tile, .vd-tile, .gal-card, .gal-fd).ph-press { transition-delay: 0s !important; transition-duration: 0s !important; }
+html.ph :is(.pl-row, .ps-item, .work, .rec, .lp-it, .vp).ph-press { background-color: rgba(127, 127, 127, .14) !important; }
+html.ph :is(.pl-card, .ig-tile, .img-tile, .vd-tile, .gal-card, .gal-fd).ph-press { opacity: .72 !important; }
+html.ph :is(.pl-row, .pl-card, .ps-item, .work, .rec, .lp-it, .vp, .ig-tile, .img-tile, .vd-tile, .gal-card, .gal-fd) { transition-property: transform, opacity, background-color, box-shadow; }
+/* 回到正在播放的文件：那一行亮一下 */
+@keyframes pl-flash { 0%, 30% { background-color: rgba(10, 132, 255, .28); } 100% { background-color: transparent; } }
+html.ph .pl-flash, .pl-flash { animation: pl-flash 1.5s ease-out; }
+
+/* 11-16 用户：播放页左边文件夹的展开 / 收起，有时明明点的是它却进了文件夹——小箭头只有 18×18，点偏一点就点到了整行。
+   手机上箭头放大到 28，能点的范围往四周再扩出去（约 44×44，主要往左边缩进那块），看起来位置不变 */
+html.ph .ps-tog:not(.none) { position: relative; width: 28px !important; height: 28px !important; border-radius: 8px; }
+html.ph .ps-tog:not(.none)::before { content: ""; position: absolute; top: -8px; bottom: -8px; left: -14px; right: -4px; }
+html.ph .ps-tog svg { width: 14px; height: 14px; }
+
+/* 11-16 用户：同一级的文件夹不对齐了——有子文件夹的那个箭头放大到 28，没有的那个空位还是 18，图标和名字差了 10px。空位也是 28 */
+html.ph .ps-tog.none { width: 28px !important; height: 28px !important; }
+
+/* 设置里显存列表的“释放”：34×21 太小，手机上点不准（11-16 全面检查） */
+html.ph .vr-x { min-height: 32px; display: inline-flex !important; align-items: center; padding: 0 12px !important; font-size: 13px !important; border-radius: 16px !important; }
+
+/* 11-16 用户：全屏播放顶上那根拉条再往上点，放到状态栏下面（以前状态栏下面还空 26px） */
+html.ph .np .np-top { padding-top: env(safe-area-inset-top, 0px) !important; min-height: 0 !important; }
+html.ph .np #np-close { top: env(safe-area-inset-top, 0px) !important; height: 30px !important; }  /* 以前 b5.css 是安全区 + 22px */
+
+/* 11-16 用户：全屏播放的字幕，正在播的那句不要高亮框了（别的句子已经模糊）。歌词样式本来是透明底，被深色主题的 .sub.on 蓝底盖住了 */
+html.ph .np .lyrics .sub.on, html.ph .np .lyrics .para .sub.on { background: transparent !important; box-shadow: none !important; }
+/* “逐行 / 段落 / 全文”收进右上角的“⋯”（npMore），字幕上面不再放 */
+html.ph .np .lyrics .subs-tools [data-mode] { display: none !important; }
+html.ph #npm-sm { flex: none; }
+html.ph #npm-sm > button { width: auto !important; min-width: 52px; padding: 0 12px !important; white-space: nowrap; font-size: 14px !important; }
+/* 参考图“先提取衣服”开关（2026-11-16）：手机上整行 44pt 都能点 */
+html.ph label.ig-xref { min-height: 44px; padding: 0 2px 0 8px; gap: 8px; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f .ig-chip.ig-xchip.on { color: var(--blue) !important; box-shadow: inset 0 0 0 1.5px var(--blue) !important; }
+/* 11-17 用户：标题栏离状态栏的距离照截图（按钮上沿在安全区下面约 16pt）；AI 助手页的顶栏另外定位，也对齐到同样的位置 */
+html.ph #main[data-page="prompt"] .pg-top:not([hidden]) { padding-top: calc(env(safe-area-inset-top, 0px) + 16px) !important; }
+/* 11-17 用户（手机）：字幕段落后面 / 句子下面有时出现粉色竖条、横条——iPhone 的文字选择光标和选中边（颜色取强调色，私密空间是粉紫色），
+   手指在字幕上按住或滑动时会被系统触发。全屏播放的字幕不用选文字（点一句是跳转）：关掉选择和长按菜单 */
+html.ph .np .lyrics, html.ph .np .lyrics * { -webkit-user-select: none !important; user-select: none !important; -webkit-touch-callout: none !important; }
+/* 11-17 用户（手机）：字幕下面 / 后面偶尔有粉色的条。不在播的句子各自加了 filter: blur，iPhone 给每句单独开图层，图层边缘偶尔画出粉紫色的线。
+   手机上不用 filter：用文字阴影做模糊（字透明 + 模糊的影子），不开图层；正在播的那句是清楚的白字 */
+html.ph .np .lyrics .subs:not(.para-mode) > .sub { filter: none !important; transition: color .4s, text-shadow .4s, transform .4s cubic-bezier(.2, .8, .2, 1) !important; }
+html.ph .np .lyrics .subs:not(.para-mode) > .sub:not(.on) { color: transparent !important; text-shadow: 0 0 1.1px rgba(255, 255, 255, .36); }
+html.ph .np .lyrics .subs:not(.para-mode) > .sub.on { text-shadow: none; }
+html.ph .np .lyrics .subs.browsing:not(.para-mode) > .sub:not(.on) { color: rgba(255, 255, 255, .7) !important; text-shadow: none !important; }  /* 滑动查看时：清楚的字 */
+/* UI 审查 #5：浅色输入栏是半透明的，下面滚过暗图时底色会变深：底色不透明度 .82 → .9，提示文字再深一点，最暗时也约 4.5:1 */
+html.ph[data-theme=light]:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f textarea::placeholder { color: #636368; }
+/* 2026-11-17 UI 审查 U03：生成（38px）和“更多工具”（34px）看起来的大小不变，点击区各向外扩到 44×44（iOS 建议的最小触控尺寸） */
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f .ig-crow > .ig-gen,
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f > .ig-cbar > .ph-more-b { position: relative !important; overflow: visible !important; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f .ig-crow > .ig-gen::after { content: ''; position: absolute; inset: -3px; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f > .ig-cbar > .ph-more-b::after { content: ''; position: absolute; inset: -5px; }
+html.ph:is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f > .ig-cbar { overflow: visible !important; }  /* 不裁掉“更多工具”外扩的点击区（左右滑的那排 .bar-l 自己裁） */
+.ph-sheet:focus { outline: none; }  /* U02：焦点放在面板本身，不画框 */
+/* 2026-11-17 UI 审查（深色）：深色玻璃输入栏下面滚过亮图时，提示文字以前只有约 2.2:1（AI 助手页 1.0:1）。
+   底色不透明度提到 .9（仍是模糊玻璃）、提示文字稍亮，下面是白图时也有约 4.8:1。只动这几个输入栏，按钮和浅色主题不变 */
+html.ph:not([data-theme=light]):is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f .ig-composer { background: rgba(40, 40, 44, .9) !important; }
+html.ph:not([data-theme=light]) .main[data-page="prompt"] .pg-composer { background: rgba(40, 40, 44, .9) !important; }
+html.ph:not([data-theme=light]):is([data-ph-page=img], [data-ph-page=video]) #main .ig-top-f textarea::placeholder,
+html.ph:not([data-theme=light]) .main[data-page="prompt"] .pg-composer textarea::placeholder { color: #aeaeb2; }
+/* 全屏播放页的音量条（2026-11-18 用户）：iPhone 上网页改不了音量 → 不显示；能调的手机照 iOS 控制中心的样子：平时没有圆点，按住时整条变粗、变亮 */
+html.ph.no-vol #np-vol { display: none !important; }
+html.ph .np .np-vknob { display: none !important; }
+html.ph .np .np-vtrack::before, html.ph .np .np-vfill { height: 6px; margin-top: -3px; border-radius: 6px; transition: height .18s cubic-bezier(.2, .8, .2, 1), margin .18s cubic-bezier(.2, .8, .2, 1), background-color .18s; }
+html.ph .np .np-vtrack.drag::before, html.ph .np .np-vtrack.drag .np-vfill { height: 14px; margin-top: -7px; border-radius: 8px; }
+html.ph .np .np-vtrack.drag .np-vfill { background: #fff; }
+
+/* 输入框上的选项（尺寸、增强、原图……）：贴着按钮往上弹的小面板（2026-11-23 用户：以前从底下升起一整页）。点外面关 */
+html.ph .ig-panel[hidden] { display: none !important; }
+html.ph .ig-panel:not([hidden]) { display: block !important; position: fixed !important; z-index: 70; width: min(360px, calc(100vw - 16px)) !important; max-height: min(56vh, 460px) !important; overflow-y: auto !important; overscroll-behavior: contain;
+  padding: 14px 14px 4px !important; border-radius: 18px; background: var(--pop, #2c2c2e) !important; box-shadow: 0 12px 40px rgba(0, 0, 0, .45) !important; transform-origin: bottom left; animation: ph-pop-in .16s ease-out; }
+@keyframes ph-pop-in { from { opacity: 0; transform: translateY(6px) scale(.97); } }
+html.ph .ig-panel .seg:has(> button) { width: 100%; } html.ph .ig-panel .seg:has(> button) > button { flex: 1 1 0; min-height: 40px; }
+html.ph .pop:not(.ph-pop) { max-width: calc(100vw - 16px); max-height: min(60vh, 520px); overflow-y: auto; overscroll-behavior: contain; border-radius: 18px; background: var(--pop, #1c1c1e) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; box-shadow: 0 12px 40px rgba(0, 0, 0, .45) !important; }  /* 和输入框上的小面板一样不透明 */
+@media (prefers-reduced-motion: reduce) { html.ph .ig-panel:not([hidden]) { animation: none; } }
+/* 播放页的路径（「上一层 › 这一层」）是给电脑用的（11-17 改版）：手机上标题栏已经有返回键和这一层的名字，再显示一遍就重复了，还竖着排成三行（11-23 用户截图） */
+html.ph .pl-crumbs { display: none !important; }

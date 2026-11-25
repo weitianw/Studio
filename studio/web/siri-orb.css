@@ -1,0 +1,109 @@
+/*
+ * Siri 风格音色球 —— 移植自 SmoothUI 的 SiriOrb 组件（React → 原生 CSS/JS）
+ * https://github.com/educlopez/smoothui/tree/main/packages/smoothui/components/siri-orb
+ *
+ * MIT License
+ * Copyright (c) 2024 Eduardo Calvo
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+ * associated documentation files (the "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
+ * following conditions: The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.
+ */
+@property --angle { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+
+.sorb {
+  --orb-size: 44px; --amp: 0;
+  position: relative; flex: none; width: var(--orb-size); height: var(--orb-size);
+  animation: sorb-breathe 5.5s cubic-bezier(.645, .045, .355, 1) infinite;
+}
+.sorb.sm { --orb-size: 24px; }
+.sorb.xl { --orb-size: 56px; }
+.sorb.lg { --orb-size: 76px; }
+
+/* 光晕：只用球自己的颜色，平时很淡，播放时随音量变亮 */
+.sorb-glow {
+  position: absolute; inset: -12%; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle at 50% 50%, var(--c2), transparent 64%);
+  filter: blur(calc(var(--orb-size) * .28));
+  opacity: calc(.16 + var(--amp) * .55); transition: opacity .12s linear;
+}
+
+.sorb-disc {
+  display: grid; grid-template-areas: "stack"; overflow: hidden; border-radius: 50%; position: relative; isolation: isolate;
+  width: 100%; height: 100%;
+  transform: scale(calc(1 + var(--amp) * .12)); transition: transform .08s linear;
+}
+.sorb-disc::before, .sorb-disc::after, .sorb-disc > .sorb-layer {
+  content: ""; display: block; grid-area: stack; width: 100%; height: 100%; border-radius: 50%;
+}
+
+/* 漂移的玻璃高光：让它看起来是一个球，而不是一张模糊的圆片 */
+.sorb-sheen {
+  background:
+    radial-gradient(circle at 30% 24%, hsl(0 0% 100% / .32), transparent 34%),
+    radial-gradient(circle at 72% 80%, hsl(0 0% 100% / .07), transparent 48%);
+  mix-blend-mode: screen;
+  animation: sorb-drift var(--drift-duration, 12s) ease-in-out infinite alternate;
+}
+/* 上亮下暗的边缘 + 细内圈 */
+.sorb-rim {
+  box-shadow:
+    inset 0 0 0 1px hsl(0 0% 100% / .16),
+    inset 0 var(--rim) calc(var(--rim) * 2) hsl(0 0% 100% / .22),
+    inset 0 calc(var(--rim) * -1.2) calc(var(--rim) * 2.4) hsl(0 0% 0% / .4);
+  pointer-events: none;
+}
+
+/* 七层旋转的锥形渐变 = Siri 球内部流动的颜色 */
+.sorb-disc::before {
+  background:
+    conic-gradient(from calc(var(--angle) * 2) at 25% 70%, var(--c3), transparent 20% 80%, var(--c3)),
+    conic-gradient(from calc(var(--angle) * 2) at 45% 75%, var(--c2), transparent 30% 60%, var(--c2)),
+    conic-gradient(from calc(var(--angle) * -3) at 80% 20%, var(--c1), transparent 40% 60%, var(--c1)),
+    conic-gradient(from calc(var(--angle) * 1.5) at 60% 35%, var(--c4), transparent 25% 75%, var(--c4)),
+    conic-gradient(from calc(var(--angle) * 2) at 15% 5%, var(--c2), transparent 10% 90%, var(--c2)),
+    conic-gradient(from calc(var(--angle) * 1) at 20% 80%, var(--c1), transparent 10% 90%, var(--c1)),
+    conic-gradient(from calc(var(--angle) * -2) at 85% 10%, var(--c3), transparent 20% 80%, var(--c3));
+  box-shadow: inset var(--bg) 0 0 var(--shadow-spread) calc(var(--shadow-spread) * .2);
+  filter: blur(calc(var(--blur-amount) * (1 - var(--amp) * .45))) contrast(var(--contrast-amount)) saturate(1.4);
+  animation: sorb-rotate var(--animation-duration, 20s) linear infinite;
+}
+/* 细密的点阵质感 */
+.sorb-disc::after {
+  background-image: radial-gradient(circle at center, var(--bg) var(--dot-size), transparent var(--dot-size));
+  background-size: calc(var(--dot-size) * 2) calc(var(--dot-size) * 2);
+  backdrop-filter: blur(calc(var(--blur-amount) * 2)) contrast(calc(var(--contrast-amount) * 2));
+  mix-blend-mode: overlay;
+  mask-image: radial-gradient(black var(--mask-radius), transparent 75%);
+}
+
+/* 省电：列表里的球平时静止，只有选中、悬停、当前使用、播放时才流动 */
+.sorb .sorb-disc::before, .sorb .sorb-sheen { animation-play-state: paused; }
+.sorb { animation-play-state: paused; }
+.sorb.sorb-live .sorb-disc::before, .sorb.sorb-live .sorb-sheen, .sorb.sorb-live,
+.sorb.playing .sorb-disc::before, .sorb.playing .sorb-sheen,
+.vp:hover .sorb .sorb-disc::before, .vp.on .sorb .sorb-disc::before,
+.vcard:hover .sorb .sorb-disc::before, .work:hover .sorb .sorb-disc::before,
+.cand .sorb .sorb-disc::before, .result .sorb .sorb-disc::before { animation-play-state: running; }
+.sorb.playing .sorb-disc::before { animation-duration: 6s; }
+
+/* 未选择音色：一个安静的空心圆 */
+.sorb.none { animation: none; }
+.sorb.none .sorb-glow { display: none; }
+.sorb.none .sorb-disc { box-shadow: inset 0 0 0 1.5px rgba(0, 0, 0, .12); background: transparent; display: grid; place-items: center; color: var(--text-3); font-size: calc(var(--orb-size) * .36); }
+.sorb.none .sorb-disc::before, .sorb.none .sorb-disc::after { display: none; }
+
+@keyframes sorb-rotate { to { --angle: 360deg; } }
+@keyframes sorb-drift { 0% { transform: translate(-6%, -4%) scale(1.05); } 100% { transform: translate(7%, 6%) scale(1.12); } }
+@keyframes sorb-breathe { 0%, 100% { scale: 1; } 50% { scale: 1.035; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .sorb, .sorb-disc::before, .sorb-sheen { animation: none !important; }
+}
+.sorb.sm .sorb-disc::after { mask-image: none; }
+.empty .sorb { margin: 0 auto 14px; }
+.vp .sorb { margin-top: 2px; }

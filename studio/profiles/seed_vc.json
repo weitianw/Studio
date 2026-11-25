@@ -1,0 +1,26 @@
+{
+  "_comment": "Seed-VC 在网页“换声”页的中文说明。依据：audio.cpp docs/models/seed_vc.md、model_specs/seed_vc.json、官方 Plachtaa/seed-vc 仓库。routes 表示该参数只在哪些路线下生效，网页据此隐藏无关参数。",
+  "label": "Seed-VC",
+  "description": "零样本换声：保留原录音的内容、语气、停顿和节奏，只把嗓音换成目标音色。不用训练，给一段目标声音就行。",
+  "chunk_seconds": 10,
+  "context_seconds": 1.0,
+  "whole_max_seconds": 300,
+  "_whole_max_seconds": "关闭智能分段时单次最长 5 分钟：RTX 5090 Laptop（24GB）实测 v1/v2 一次转 5 分钟可行（峰值约 11GB），20 分钟需要约 222GB 显存，引擎会因内存不足崩溃。",
+  "_chunk_seconds": "实测：一次送入 10 秒左右时每个字都完整；超过 20 秒会开始吞掉句尾轻声字（如“了”）。所以长音频在最安静处切成不超过 10 秒一块；每块前后各多送 1 秒原录音当上下文（否则块开头的字会转错，如“夜深了”变“夜深啊”），转完裁掉，再按原时间轴拼回。",
+  "defaults": {"route": "v1_xlsr_hift_vc"},
+  "_defaults": "官方默认路线是 v2_vc。实测（中文、3 分钟录音）v2 常把句尾轻声字吞掉（“错过了”→“错过”），而 v1_xlsr_hift_vc 几乎不吞字、“嗯？”的上扬保留得更好，速度也快 3 倍，所以网页默认用它；v2 仍可在高级参数里选。",
+  "hidden_options": ["noise_file", "seed"],
+  "options_zh": {
+    "route": {"label": "转换路线", "help": "v1 · XLSR + HiFT（网页默认）：实测吞字最少、语调保留最好、最快，音高会自动移到目标声音的音域。v2_vc（官方默认）：较新的版本，但实测常吞掉句尾轻声字。v1 · Whisper + BigVGAN：旧版，语调不太稳定。v1_svc：唱歌换声（保留旋律）。",
+      "values_zh": {"v1_xlsr_hift_vc": "v1 · XLSR + HiFT（推荐）", "v2_vc": "v2 · 官方默认", "v1_whisper_bigvgan_vc": "v1 · Whisper + BigVGAN", "v1_svc": "v1 · 唱歌"}},
+    "num_inference_steps": {"label": "扩散步数", "help": "默认 30（官方默认）。越多越细腻但越慢，一般 25~50 之间。"},
+    "intelligibility_guidance_scale": {"label": "咬字清晰度", "help": "默认 0.7（官方默认）。调高字更清楚、更贴近原录音的发音；太高可能带出原声的口音和质感。", "routes": ["v2_vc"]},
+    "similarity_guidance_scale": {"label": "音色相似度", "help": "默认 0.7（官方默认）。调高更像目标声音；太高可能失真或吞字。", "routes": ["v2_vc"]},
+    "voice_anonymization": {"label": "匿名化（不用目标音色）", "help": "打开后不模仿目标声音，而是换成一个随机的“平均人声”，用来隐藏原说话人身份。一般关闭。", "routes": ["v2_vc"]},
+    "inference_guidance_scale": {"label": "引导强度", "help": "默认 0.7（官方默认）。调高更像目标声音，0 或负数关闭引导。", "routes": ["v1_whisper_bigvgan_vc", "v1_xlsr_hift_vc", "v1_svc"]},
+    "duration_scale": {"label": "时长缩放", "help": "默认 1。大于 1 变慢变长。会打乱原录音的时间轴，配音一般保持 1。", "routes": ["v1_whisper_bigvgan_vc", "v1_xlsr_hift_vc", "v1_svc"]},
+    "f0_condition": {"label": "保留旋律（音高条件）", "help": "让输出严格跟着原录音的音高走。唱歌路线默认开启，旧版说话路线默认关闭。", "routes": ["v1_whisper_bigvgan_vc", "v1_xlsr_hift_vc", "v1_svc"]},
+    "auto_f0_adjust": {"label": "自动调整音高", "help": "需要先打开“保留旋律”。把原录音的音高整体移到目标声音的音域，男女互换时打开。", "routes": ["v1_whisper_bigvgan_vc", "v1_xlsr_hift_vc", "v1_svc"]},
+    "semitone_shift": {"label": "升降调（半音）", "help": "需要先打开“保留旋律”。整体升高或降低几个半音，例如 +12 升一个八度。", "routes": ["v1_whisper_bigvgan_vc", "v1_xlsr_hift_vc", "v1_svc"]}
+  }
+}

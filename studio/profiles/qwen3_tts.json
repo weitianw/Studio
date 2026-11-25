@@ -1,0 +1,223 @@
+{
+  "_comment": "Qwen3-TTS 1.7B 在网页中的中文说明与官方用法。三个官方模型：Base（克隆）、VoiceDesign（音色设计）、CustomVoice（预设音色 + 指令）。依据：QwenLM/Qwen3-TTS README、audio.cpp docs/models/qwen3_tts.md。",
+  "label": "Qwen3-TTS 1.7B",
+  "languages": [
+    "中文（含北京话、四川话预设）",
+    "英文",
+    "日语",
+    "韩语",
+    "德语",
+    "法语",
+    "俄语",
+    "葡萄牙语",
+    "西班牙语",
+    "意大利语"
+  ],
+  "variants": {
+    "clone": "base",
+    "design": "voicedesign",
+    "preset": "customvoice"
+  },
+  "roles": {
+    "clone": true,
+    "direct": false,
+    "design": true,
+    "preset": true
+  },
+  "modes": {
+    "clone": "纯克隆（官方 Base 模型）：用参考音色朗读。官方 Base 模型不支持语气指令，想控制语气请用 Breeze 或 IndexTTS，或改用预设音色。",
+    "design": "音色设计（官方 VoiceDesign 模型）：完全按文字描述创造一个新声音。",
+    "preset": "预设音色（官方 CustomVoice 模型）：使用官方内置的音色，可以再加一句语气指令。"
+  },
+  "presets": [
+    {
+      "id": "vivian",
+      "name": "Vivian · 明亮女声",
+      "desc": "明亮、略带锐气的年轻女声（中文）"
+    },
+    {
+      "id": "serena",
+      "name": "Serena · 温柔女声",
+      "desc": "温暖柔和的年轻女声（中文）"
+    },
+    {
+      "id": "uncle_fu",
+      "name": "福叔 · 醇厚男声",
+      "desc": "低沉醇厚的成熟男声（中文）"
+    },
+    {
+      "id": "dylan",
+      "name": "Dylan · 北京话",
+      "desc": "清晰自然的北京青年男声（北京话）"
+    },
+    {
+      "id": "eric",
+      "name": "Eric · 四川话",
+      "desc": "活泼、略带沙哑的成都男声（四川话）"
+    },
+    {
+      "id": "ryan",
+      "name": "Ryan · 动感男声",
+      "desc": "富有节奏感的男声（英文为主）"
+    },
+    {
+      "id": "aiden",
+      "name": "Aiden · 阳光男声",
+      "desc": "阳光清澈的美式男声（英文为主）"
+    },
+    {
+      "id": "ono_anna",
+      "name": "小野杏 · 日语",
+      "desc": "俏皮灵动的女声（日语为主）"
+    },
+    {
+      "id": "sohee",
+      "name": "Sohee · 韩语",
+      "desc": "温暖有感情的女声（韩语为主）"
+    }
+  ],
+  "director": {
+    "kind": "instruct",
+    "emotions": [
+      {
+        "key": "开心",
+        "levels": [
+          "带着一点笑意",
+          "很开心、语气轻快",
+          "非常兴奋、开心到飞起"
+        ]
+      },
+      {
+        "key": "委屈",
+        "levels": [
+          "有点委屈",
+          "很委屈、声音发紧",
+          "委屈得快哭了"
+        ]
+      },
+      {
+        "key": "生气",
+        "levels": [
+          "有些不耐烦",
+          "很生气",
+          "暴怒"
+        ]
+      },
+      {
+        "key": "悲伤",
+        "levels": [
+          "略带伤感",
+          "悲伤低沉",
+          "悲痛欲绝"
+        ]
+      },
+      {
+        "key": "温柔",
+        "levels": [
+          "温和",
+          "温柔",
+          "极其温柔"
+        ]
+      },
+      {
+        "key": "严肃",
+        "levels": [
+          "认真",
+          "严肃",
+          "非常严肃"
+        ]
+      }
+    ],
+    "styles": [
+      "小声说",
+      "大声说",
+      "像在讲故事",
+      "播音腔",
+      "撒娇",
+      "懒洋洋地"
+    ],
+    "paces": [
+      {
+        "label": "慢",
+        "text": "语速偏慢"
+      },
+      {
+        "label": "正常",
+        "text": ""
+      },
+      {
+        "label": "快",
+        "text": "语速偏快"
+      }
+    ],
+    "tips": "指令只在“音色设计”和“预设音色”下生效（官方 Base 克隆模型不接受指令）。"
+  },
+  "design_examples": [
+    "一位温柔自信的年轻女性，声音清晰，语气亲切。",
+    "一位四十岁左右的男性旁白，声音低沉有磁性，语速平稳偏慢。",
+    "一位知性的女主播，声音干净利落，语气沉稳大方。",
+    "一位七十多岁的老爷爷，声音沙哑慈祥，说话慢悠悠的。"
+  ],
+  "events": {
+    "official": [],
+    "note": "Qwen3-TTS 没有官方声音事件标签。"
+  },
+  "hidden_options": [
+    "instruct",
+    "reference_text",
+    "voice_id",
+    "text_chunk_size",
+    "stream_frames_per_event",
+    "stream_chunk_policy"
+  ],
+  "options_zh": {
+    "x_vector_only_mode": {
+      "label": "仅用音色特征",
+      "help": "只提取参考音频的说话人特征，不用参考文本。参考转写不准、参考音频和正文语言不同时更稳，也不会照搬参考的语速和口癖；相似度略低。只在纯克隆时有效。"
+    },
+    "language": {
+      "label": "语言",
+      "help": "默认 auto（自动识别）。纯中文稿子保持 auto 即可。"
+    },
+    "max_tokens": {
+      "label": "每段最长长度",
+      "help": "默认由模型配置决定（约 2048）。网页按句子切段，不用改。"
+    },
+    "do_sample": {
+      "label": "随机采样",
+      "help": "默认开启（官方默认）。"
+    },
+    "temperature": {
+      "label": "表现力（随机度）",
+      "help": "默认 0.9（官方默认）。"
+    },
+    "top_k": {
+      "label": "候选数",
+      "help": "默认 50（官方默认）。"
+    },
+    "top_p": {
+      "label": "累计概率",
+      "help": "默认 1（官方默认）。"
+    },
+    "repetition_penalty": {
+      "label": "重复惩罚",
+      "help": "默认 1.05（官方默认）。"
+    },
+    "subtalker_do_sample": {
+      "label": "细节层随机采样",
+      "help": "默认开启（官方默认），影响声音细节。"
+    },
+    "subtalker_temperature": {
+      "label": "细节层随机度",
+      "help": "默认 0.9（官方默认）。"
+    },
+    "subtalker_top_k": {
+      "label": "细节层候选数",
+      "help": "默认 50（官方默认）。"
+    },
+    "subtalker_top_p": {
+      "label": "细节层累计概率",
+      "help": "默认 1（官方默认）。"
+    }
+  }
+}

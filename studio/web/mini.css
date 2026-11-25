@@ -1,0 +1,87 @@
+/* 根节点用 .vmini（不能用 .mini：.seg.mini、.ap.mini 等别的组件也叫 mini，会被误套上悬浮小窗的样式）
+   ---------------- 视频小窗（页面里的悬浮小窗 / 贴在播放条上 / 弹到窗口外，共用） ---------------- */
+.vmini { --ar: 1.7778; position: fixed; z-index: 45; right: 28px; bottom: 100px; width: 360px; display: flex; flex-direction: column;
+  border-radius: 14px; overflow: hidden; background: #000; color: #fff; container-type: inline-size;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .35), 0 0 0 1px rgba(255, 255, 255, .07); user-select: none; -webkit-user-select: none; touch-action: none;
+  opacity: 0; transform: translateY(16px) scale(.94); transition: opacity .3s cubic-bezier(.4, 0, .2, 1), transform .32s cubic-bezier(.4, 0, .2, 1), box-shadow .2s; }
+.vmini.show { opacity: 1; transform: none; }
+.vmini:not(.show) { pointer-events: none; }
+.vmini[hidden] { display: none; }
+.vmini.drag { cursor: grabbing; transition: none; z-index: 46; box-shadow: 0 28px 80px rgba(0, 0, 0, .45), 0 0 0 1px rgba(255, 255, 255, .1); }
+.vmini.sizing { transition: none; }
+
+/* 画面 */
+.mini-v { aspect-ratio: var(--ar); display: grid; background: #000; cursor: grab; min-height: 0; }
+.vmini.drag .mini-v { cursor: grabbing; }
+.mini-v .np-video { display: block !important; width: 100% !important; height: 100% !important; max-width: none !important; max-height: none !important;
+  object-fit: contain; pointer-events: none; border-radius: 0 !important; box-shadow: none !important; background: #000 !important; transform: none !important; }
+
+/* 按钮都浮在画面上，鼠标移上去才出现；画面本身不变暗，按钮自己带一层半透明底色，在亮的画面上也看得清 */
+.mini-top { position: absolute; left: 0; right: 0; top: 0; z-index: 3; display: flex; gap: 6px; padding: 8px; pointer-events: none; }
+.mini-gap { flex: 1; }
+.mini-bot { position: absolute; left: 0; right: 0; bottom: 14px; z-index: 3; display: flex; justify-content: center; pointer-events: none; }
+.mini-mid { display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: 999px; background: rgba(22, 22, 24, .5); backdrop-filter: blur(12px) saturate(1.4); -webkit-backdrop-filter: blur(12px) saturate(1.4); }
+.mini-top, .mini-bot, .mini-time { opacity: 0; transition: opacity .2s; }
+.vmini:hover .mini-top, .vmini:hover .mini-bot, .vmini:hover .mini-time, .vmini.seeking .mini-bot { opacity: 1; }
+.vmini:hover .mini-top button, .vmini:hover .mini-mid { pointer-events: auto; }
+.vmini.drag .mini-top, .vmini.drag .mini-bot, .vmini.drag .mini-time, .vmini.sizing .mini-top, .vmini.sizing .mini-bot { opacity: 0; }
+.mini-top button { all: unset; cursor: pointer; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #fff;
+  background: rgba(22, 22, 24, .5); backdrop-filter: blur(12px) saturate(1.4); -webkit-backdrop-filter: blur(12px) saturate(1.4); transition: background .15s, transform .15s; }
+.mini-top button:hover { background: rgba(50, 50, 54, .75); transform: scale(1.06); }
+.mini-top button svg { width: 15px; height: 15px; }
+.mini-top button.on { background: rgba(255, 255, 255, .9); color: #111; }
+.mini-mid button { all: unset; cursor: pointer; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; color: #fff; transition: background .15s, transform .12s; }
+.mini-mid button:hover { background: rgba(255, 255, 255, .16); }
+.mini-mid button:active { transform: scale(.88); }
+.mini-mid button svg { width: 18px; height: 18px; }
+.mini-mid [data-mini="play"] { width: 30px; height: 30px; }
+.mini-mid [data-mini="play"] svg { width: 14px; height: 14px; }
+.mini-time { position: absolute; right: 10px; bottom: 19px; z-index: 3; font-size: 11px; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, .7); font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; }
+@container (max-width: 330px) { .mini-time { display: none; } }
+@container (max-width: 230px) { .mini-mid [data-mini="b15"], .mini-mid [data-mini="f15"] { display: none; } }
+
+/* 最底下的细进度条：平时一条细线，鼠标移上去变粗、出现圆点和时间 */
+.mini-track { position: absolute; left: 0; right: 0; bottom: 0; height: 12px; z-index: 4; cursor: pointer; touch-action: none; }
+.mini-rail, .mini-fill { position: absolute; left: 12px; bottom: 4px; height: 3px; border-radius: 3px; pointer-events: none; transition: height .18s cubic-bezier(.2, .8, .2, 1), bottom .18s cubic-bezier(.2, .8, .2, 1); }
+.mini-rail { right: 12px; background: rgba(255, 255, 255, .28); }
+.mini-fill { width: 0; background: #fff; }
+.vmini:not(:hover):not(.seeking) .mini-rail, .vmini:not(:hover):not(.seeking) .mini-fill { left: 0; right: 0; bottom: 0; border-radius: 0; height: 2px; }
+.vmini:not(:hover):not(.seeking) .mini-rail { right: 0; }
+.mini-track:hover .mini-rail, .mini-track:hover .mini-fill, .vmini.seeking .mini-rail, .vmini.seeking .mini-fill { height: 6px; bottom: 3px; }
+.mini-knob { position: absolute; bottom: 6px; left: 12px; width: 13px; height: 13px; margin: 0 0 -6.5px -6.5px; border-radius: 50%; background: #fff; box-shadow: 0 1px 5px rgba(0, 0, 0, .5);
+  transform: scale(0); transition: transform .18s cubic-bezier(.2, .8, .2, 1); pointer-events: none; }
+.mini-track:hover .mini-knob, .vmini.seeking .mini-knob { transform: scale(1); }
+.mini-hover { position: absolute; bottom: 3px; width: 2px; height: 6px; margin-left: -1px; border-radius: 2px; background: rgba(255, 255, 255, .7); opacity: 0; pointer-events: none; transition: opacity .15s; }
+.mini-track:hover .mini-hover { opacity: 1; }
+.vmini.seeking .mini-hover { opacity: 0; }
+.mini-tip { position: absolute; bottom: 14px; transform: translateX(-50%); padding: 3px 8px; border-radius: 7px; font-size: 11px; font-weight: 600; color: #fff; background: rgba(0, 0, 0, .78);
+  font-variant-numeric: tabular-nums; white-space: nowrap; opacity: 0; transition: opacity .15s; pointer-events: none; }
+.mini-track:hover .mini-tip, .vmini.seeking .mini-tip { opacity: 1; }
+.vmini:has(.mini-track:hover) .mini-time, .vmini.seeking .mini-time { opacity: 0; }
+
+/* 四个角：按住拖动改大小（画面比例不变） */
+.mini-rz { position: absolute; z-index: 5; width: 16px; height: 16px; }
+.mini-rz[data-rz="nw"] { left: 0; top: 0; cursor: nwse-resize; }
+.mini-rz[data-rz="ne"] { right: 0; top: 0; cursor: nesw-resize; }
+.mini-rz[data-rz="sw"] { left: 0; bottom: 0; width: 10px; height: 10px; cursor: nesw-resize; }
+.mini-rz[data-rz="se"] { right: 0; bottom: 0; width: 10px; height: 10px; cursor: nwse-resize; }
+
+/* 从播放条展开：贴在底栏上方，宽度和底栏一致；播放控制就用下面的底栏，这里只留上面一排小按钮 */
+.vmini.dock { right: auto; border-radius: 18px; cursor: default; transform-origin: 50% 100%; transform: translateY(30px) scaleY(.2) scaleX(.96); }
+.vmini.dock.show { transform: none; }
+.vmini.dock.drag { transform: none; }
+.vmini.dock .mini-v { flex: 1; aspect-ratio: auto; }
+.vmini.dock .mini-track, .vmini.dock .mini-time, .vmini.dock .mini-bot { display: none; }
+.vmini.dock .mini-v { cursor: grab; }
+.vmini.dock .mini-top { padding: 10px; }
+.vmini.dock .mini-top button { width: 32px; height: 32px; }
+
+/* 弹到窗口外（网页的画中画窗口 / 应用的独立小窗）：铺满整个窗口 */
+.vmini.out { position: fixed; inset: 0; width: auto; height: auto; border-radius: 0; box-shadow: none; opacity: 1; transform: none; transition: none; pointer-events: auto; }
+.vmini.out .mini-v { flex: 1; aspect-ratio: auto; }
+.vmini.out:not(.ext) .mini-rz { display: none; }
+@media (prefers-reduced-motion: reduce) { .vmini { transition: none !important; } }
+
+/* 视频小窗：视频铺满画面区域（竖屏视频在“从播放条展开”里也完整显示，不会只露出上半截） */
+.mini-v { position: relative; }
+.mini-v .np-video { position: absolute; inset: 0; }

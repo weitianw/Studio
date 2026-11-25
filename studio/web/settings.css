@@ -1,0 +1,60 @@
+/* 设置页（2026-11-05）：分组的列表，每行左边名称 + 说明，右边选项；宽度适中居中，手机上一列 */
+.st-wrap { max-width: 820px; margin: 0 auto; padding-bottom: 40px; }
+.st-sec + .st-sec { margin-top: 26px; }
+.st-h { margin: 0 0 8px 6px; font-size: 13px; font-weight: 600; color: var(--text-3); letter-spacing: .02em; }
+.st-card { padding: 0 !important; overflow: hidden; }
+.st-row { display: flex; align-items: center; gap: 16px; min-height: 56px; padding: 10px 18px; color: inherit; text-decoration: none; }
+.st-row + .st-row, #st-cats + .st-row, .st-card > * + .st-row { border-top: 1px solid var(--line); }
+#st-cats > .st-row:first-child { border-top: 1px solid var(--line); }
+.st-l { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.st-l b { font-size: 14px; font-weight: 600; }
+.st-l span { font-size: 12px; color: var(--text-3); line-height: 1.5; }
+.st-r { flex: none; display: flex; align-items: center; gap: 10px; }
+.st-cur { font-style: normal; font-size: 12px; color: var(--text-3); white-space: nowrap; }
+.st-chev { width: 16px; height: 16px; color: var(--text-3); }
+label.st-row, .st-link { cursor: pointer; }
+@media (hover: hover) and (pointer: fine) { .st-link:hover, label.st-row:hover { background: rgba(127, 127, 127, .06); } }
+/* 存储 */
+.st-total { font-style: normal; font-size: 13px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.st-cat .st-ck { flex: none; display: flex; }
+.st-cat .st-ck input { width: 16px; height: 16px; accent-color: var(--blue); cursor: pointer; }
+.st-cat.off .st-l, .st-cat.off .st-size { opacity: .45; }
+.st-size { flex-direction: column; align-items: flex-end; gap: 2px; text-align: right; }
+.st-size b { font-size: 13px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+.st-size b.none { color: var(--text-3); font-weight: 400; }
+.st-size em { font-style: normal; font-size: 11.5px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.st-act-r { flex-wrap: wrap; justify-content: flex-end; }
+.st-age button { padding: 0 10px; font-size: 12px; }
+.st-clean { min-width: 108px; }
+.st-note { padding: 10px 18px 14px; color: var(--text-3); border-top: 1px solid var(--line); line-height: 1.6; }
+.st-err { padding: 14px 18px; color: var(--red); }
+/* 显卡：沿用弹窗里的显存样式 */
+.st-vram .gp-vram { margin: 0; padding: 14px 18px; border: 0; background: none; }
+.st-eng { margin: 0; padding: 0; background: none; }
+@media (max-width: 760px) {
+  .st-row { flex-wrap: wrap; gap: 8px 12px; padding: 12px 14px; }
+  .st-act .st-r, .st-act-r { width: 100%; justify-content: space-between; }
+  .st-age { flex: 1 1 auto; }
+  .st-age button { flex: 1 1 0; padding: 0 4px; }
+  .st-cat, .st-sum, .st-sw { flex-wrap: nowrap; align-items: flex-start; }  /* 开关和说明同一行，开关在右边 */
+  .st-sw .st-r { padding-top: 2px; }  /* 勾选框、说明、大小同一行 */
+  .st-cat .st-ck { padding-top: 2px; }
+  .st-cat .st-size { max-width: 36%; }
+  .st-size b { font-size: 12.5px; }
+}
+/* 2026-11-06 界面审查：“多久以前”按钮原来只有 18px 高，加到 26px，好点 */
+.st-age button { min-height: 26px; }
+.st-age button { white-space: nowrap; }
+/* 触屏：整行本来就能点（label），复选框画大一点，看着也像能点（2026-11-15 界面检查） */
+@media (pointer: coarse) { .st-cat .st-ck input { width: 20px; height: 20px; } .st-age button { min-height: 32px; } }  /* 触屏（手机 / iPad）上“多久以前”按钮够高（2026-11-16 检查）*/
+/* 左边的目录（2026-11-18）：窗口够宽时在内容左边，跟着滚动停在上面；窄窗口 / 手机不显示，照旧一列 */
+.st-nav { display: none; }
+@media (min-width: 1180px) {
+  html:not(.ph) .st-layout { display: grid; grid-template-columns: 148px minmax(0, 820px) 148px; column-gap: 32px; justify-content: center; }
+  html:not(.ph) .st-layout > .st-wrap { margin: 0; width: 100%; }
+  html:not(.ph) .st-nav { display: flex; flex-direction: column; gap: 2px; position: sticky; top: 16px; align-self: start; }
+  html:not(.ph) .st-nav button { all: unset; box-sizing: border-box; padding: 7px 12px; border-radius: 8px; font-size: 13px; color: var(--text-2); cursor: pointer; }
+  html:not(.ph) .st-nav button:hover { background: rgba(127, 127, 127, .08); color: var(--text); }
+  html:not(.ph) .st-nav button.on { background: rgba(127, 127, 127, .12); color: var(--text); font-weight: 600; }
+  html:not(.ph) .st-nav button:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+}

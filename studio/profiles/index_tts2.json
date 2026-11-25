@@ -1,0 +1,49 @@
+{
+  "_comment": "IndexTTS-2 / 2.5 在网页中的中文说明与官方用法。依据：audio.cpp docs/models/index_tts2.md、model_specs/index_tts2.json、官方 index-tts 仓库。",
+  "label": "IndexTTS-2.5",
+  "languages": ["中文", "英文", "日语", "西班牙语", "阿拉伯语"],
+  "roles": {"clone": true, "direct": true, "design": false, "preset": false},
+  "modes": {
+    "clone": "纯克隆：只用参考音色，情绪也跟随参考音频（官方默认用法）。",
+    "direct": "情绪控制（官方 emotion control）：保留参考音色，用一句话描述情绪，或者在下方用 8 个情绪滑杆精确调配。音色和情绪是解耦的，换情绪不换声音。"
+  },
+  "director": {
+    "kind": "emotion",
+    "emotions": [
+      {"key": "开心", "text": "开心、高兴"},
+      {"key": "委屈", "text": "委屈、想哭"},
+      {"key": "生气", "text": "生气、愤怒"},
+      {"key": "悲伤", "text": "悲伤、难过"},
+      {"key": "害怕", "text": "害怕、紧张"},
+      {"key": "惊讶", "text": "惊讶、意外"},
+      {"key": "厌恶", "text": "厌恶、嫌弃"},
+      {"key": "平静", "text": "平静、淡定"}
+    ],
+    "levels": [0.4, 0.6, 0.9],
+    "vector_labels": ["高兴", "愤怒", "悲伤", "害怕", "厌恶", "低落", "惊讶", "平静"],
+    "tips": "强度滑杆对应模型的真实参数 emotion_alpha（官方建议文字情绪用 0.6 左右，更自然）。也可以直接写一句带情绪的话，比如“你吓死我了！你是鬼吗？”，模型会从这句话里理解情绪。"
+  },
+  "events": {
+    "official": [],
+    "pronunciation": true,
+    "note": "IndexTTS-2.5 支持用 <文字|拼音> 指定读音，例如 <银行|yin2 hang2>，拼音后面的数字是声调。多音字读错时特别有用。单独出现、后面紧跟问号的“嗯？啊？欸？”会自动按疑问的上扬读音（ng2 / a2 / ei2）标注；想要别的读法，自己写 <嗯|ng4> 即可覆盖。它不支持 [笑] 这类声音事件。"
+  },
+  "_question_interjections": "单独的疑问语气词在问号前自动标注上扬读音（词典读音：嗯 ńg、啊 á、欸 éi 表示疑问/追问）。实测不标注时“嗯？”几乎不上扬。",
+  "question_interjections": {"嗯": "ng2", "啊": "a2", "欸": "ei2", "诶": "ei2"},
+  "defaults": {"direct_emotion_alpha": 0.6},
+  "hidden_options": ["text", "emotion_text", "use_emotion_text", "emotion_vector", "emotion_alpha", "text_chunk_size", "text_chunk_mode"],
+  "options_zh": {
+    "language": {"label": "语言", "help": "留空 = 自动（含汉字就按中文）。中日混排等情况可手动指定 zh / en / ja / es / ar。"},
+    "use_random_emotion": {"label": "随机情绪", "help": "让模型随机混合情绪权重。一般关闭。"},
+    "interval_silence_ms": {"label": "内部分句停顿（毫秒）", "help": "模型自己分句时插入的静音，默认 200（官方默认）。网页已按句子切段，一般不起作用。"},
+    "do_sample": {"label": "随机采样", "help": "默认开启（官方默认）。关闭后结果固定但可能更呆板。"},
+    "top_p": {"label": "累计概率", "help": "默认 0.8（官方默认）。"},
+    "top_k": {"label": "候选数", "help": "默认 30（官方默认）。"},
+    "temperature": {"label": "表现力（随机度）", "help": "默认 0.8（官方默认）。调低更稳，调高更有起伏。"},
+    "length_penalty": {"label": "长度惩罚", "help": "默认 0（官方默认），一般不用动。"},
+    "num_beams": {"label": "束搜索数", "help": "默认 3（官方默认）。越大越稳但越慢。"},
+    "repetition_penalty": {"label": "重复惩罚", "help": "默认 10（官方默认），防止卡顿重复。"},
+    "max_tokens": {"label": "每段最长长度", "help": "默认 1500（官方默认），每段远小于这个上限。"},
+    "duration_scale": {"label": "语速 / 时长缩放", "help": "默认 1（官方默认）。大于 1 变慢变长（例如 1.15），小于 1 变快（例如 0.9）。改动过大可能影响自然度。"}
+  }
+}

@@ -1,0 +1,1912 @@
+/* =====================================================================
+   界面改版（2026-11-07，方案 B 第 5 版）：最后加载，盖过前面的旧样式。
+   中性灰 + 墨色主按钮；深色是接近可灵的纯黑；导航栏和页面同一个底色，内容是圆角卡片。
+   旧界面备份：D:\AI-TTS\docs\归档\代码备份_1102-1107\ui-before-redesign-20261107
+   ===================================================================== */
+:root {
+  --canvas: #f5f5f7; --card: #ffffff; --field: #f0f0f2; --hover: rgba(0, 0, 0, .05); --pop: #ffffff; --on-ink: #ffffff;
+  --sh: 0 1px 2px rgba(0, 0, 0, .05), 0 10px 30px rgba(0, 0, 0, .10);
+  --bg: var(--canvas); --surface: var(--card); --surface-2: var(--field);
+  --text: #0d0d0d; --text-2: #5c5c61; --text-3: #6a6a6f; --ink: #0d0d0d;
+  --line: rgba(0, 0, 0, .07); --line-2: rgba(0, 0, 0, .13);
+  --blue: #0a7cff; --blue-soft: rgba(10, 124, 255, .10);
+  --shadow: none; --shadow-lg: var(--sh); --r: 18px; --r-sm: 12px;
+  --rail-w: 88px;
+}
+html[data-theme="dark"] {
+  --canvas: #0b0b0c; --card: #161617; --field: #1f1f21; --hover: rgba(255, 255, 255, .06); --pop: #1c1c1e; --on-ink: #0b0b0c;
+  --sh: 0 1px 2px rgba(0, 0, 0, .4), 0 12px 40px rgba(0, 0, 0, .6), inset 0 0 0 1px rgba(255, 255, 255, .06);
+  --bg: var(--canvas); --surface: var(--card); --surface-2: var(--field);
+  --text: #ededed; --text-2: #b0b0b4; --text-3: #8e8e93; --ink: #ededed;
+  --line: rgba(255, 255, 255, .08); --line-2: rgba(255, 255, 255, .14);
+  --blue: #4ea1ff; --blue-soft: rgba(78, 161, 255, .13);
+}
+html.rail-wide { --rail-w: 248px; }
+html, html body, html[data-theme="dark"], html[data-theme="dark"] body { background: var(--canvas); }
+::selection { background: color-mix(in srgb, var(--blue) 25%, transparent); }
+
+/* ---------------- 外壳：左边分类导航栏 + 内容 ---------------- */
+.app { grid-template-columns: var(--rail-w) minmax(0, 1fr) !important; }
+.rail { position: sticky; top: 0; height: 100vh; z-index: 42; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 16px 0 14px; background: var(--canvas); }
+.rail .ri, .rail svg.ri { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.rail .brand { display: flex; align-items: center; justify-content: center; gap: 8px; height: 36px; margin: 0 0 14px; padding: 0; }
+.rail .brand-note { width: 22px; height: 22px; color: var(--text); }
+.rail .brand-word { display: none; font-size: 17px; font-weight: 700; letter-spacing: -.01em; color: var(--text); }
+.rnav { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; }
+.cat { position: relative; width: 60px; }
+.cat-b { all: unset; box-sizing: border-box; cursor: pointer; width: 60px; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 0 6px; border-radius: 12px; color: var(--text-3); font-size: 11px; line-height: 1.2; }
+.cat-b .ic { width: 40px; height: 32px; border-radius: 10px; display: grid; place-items: center; transition: background-color .15s; }
+.cat-b:hover, .cat.open .cat-b { color: var(--text); }
+.cat-b:hover .ic, .cat.open .cat-b .ic { background: var(--hover); }
+.cat.on .cat-b, .cat-b.active { color: var(--text); font-weight: 600; }
+.cat.on .cat-b .ic, .cat-b.active .ic { background: var(--field); }
+.cat-b:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+/* 一类里的几个页面：鼠标停上去（或点一下）在右边弹出 */
+.fly { position: absolute; left: calc(100% + 8px); top: -4px; min-width: 176px; padding: 6px; border-radius: 14px; background: var(--pop); box-shadow: var(--sh); z-index: 60;
+  opacity: 0; transform: translateX(-4px); pointer-events: none; visibility: hidden; transition: opacity .14s, transform .14s, visibility 0s .14s; }
+.fly::before { content: ''; position: absolute; left: -10px; top: 0; bottom: 0; width: 10px; }  /* 鼠标从图标移到菜单时不会断 */
+@media (hover: hover) and (pointer: fine) { html:not(.rail-wide) .cat:hover .fly { opacity: 1; transform: none; pointer-events: auto; visibility: visible; transition: opacity .14s .06s, transform .14s .06s, visibility 0s; } }
+.cat.open .fly { opacity: 1; transform: none; pointer-events: auto; visibility: visible; transition: opacity .14s, transform .14s, visibility 0s; }
+.fly a, .rnav .fly a { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 9px; color: var(--text-2); font-size: 13.5px; white-space: nowrap; text-decoration: none; }
+.fly a .ri { width: 18px; height: 18px; }
+.fly a:hover { background: var(--hover); color: var(--text); }
+.fly a.active { background: var(--hover); color: var(--text); font-weight: 600; }
+/* 底部：私密空间、设置、展开导航；播放器小圆钮浮在它上面（#pb-fab） */
+.rail-foot { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; padding: 0 8px; box-sizing: border-box; }
+.rail-row { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.rbtn { all: unset; box-sizing: border-box; cursor: pointer; position: relative; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: var(--text-3); transition: background-color .15s, color .15s; }
+.rbtn:hover { background: var(--hover); color: var(--text); }
+.rbtn:focus-visible { outline: 2px solid var(--blue); }
+.rbtn .ri { width: 20px; height: 20px; }
+.rbtn .more-ic, .rbtn .tb-l { display: none; }
+.rbtn .dot { position: absolute; right: 7px; top: 7px; width: 7px; height: 7px; margin: 0; border-radius: 50%; box-shadow: 0 0 0 2px var(--canvas); }
+.rbtn.m-on { color: var(--text); }
+.rail .side-dock { flex: none; justify-content: center; }
+.rail .side-dock .sd-gpu { padding: 0 6px; height: 28px; font-size: 11.5px; color: var(--text-3); }
+.rail .side-dock .sd-bar { display: none; }
+html.rail-wide .rail .side-dock .sd-bar { display: block; }
+.rail .vault-chip:not([hidden]) { all: unset; box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: 6px; width: 44px; height: 30px; border-radius: 10px; color: #8b7bff; background: rgba(124, 92, 255, .12); font-size: 12px; }
+.rail .vault-chip > svg { width: 12px; height: 12px; flex: none; }
+.rail .vault-chip > span { display: none; }
+.rail .vault-chip button { all: unset; cursor: pointer; display: none; }
+/* 展开：完整列表，一类之间只用留白分开 */
+html.rail-wide .rail { align-items: stretch; padding: 16px 12px 14px; }
+html.rail-wide .rail .brand { justify-content: flex-start; padding-left: 8px; }
+html.rail-wide .rail .brand-word { display: inline; }
+html.rail-wide .rnav { align-items: stretch; gap: 0; }
+html.rail-wide .cat { width: auto; }
+html.rail-wide .cat + .cat { margin-top: 12px; }
+html.rail-wide .cat > button.cat-b { display: none; }
+html.rail-wide .cat > a.cat-b { width: auto; flex-direction: row; gap: 10px; padding: 7px 10px; border-radius: 10px; font-size: 13.5px; color: var(--text-2); }
+html.rail-wide .cat > a.cat-b .ic { width: 18px; height: 18px; background: none !important; } html.rail-wide .cat > a.cat-b .ri { width: 18px; height: 18px; }
+html.rail-wide .cat > a.cat-b:hover { background: var(--hover); color: var(--text); }
+html.rail-wide .cat > a.cat-b.active { background: var(--hover); color: var(--text); }
+html.rail-wide .fly { position: static; opacity: 1; transform: none; visibility: visible; pointer-events: auto; box-shadow: none; background: none; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+html.rail-wide .fly::before { display: none; }
+html.rail-wide .fly a { padding: 7px 10px; border-radius: 10px; }
+html.rail-wide .rail-foot { align-items: stretch; padding: 0; }
+html.rail-wide .rail-row { flex-direction: row; justify-content: space-between; }
+html.rail-wide .rail .vault-chip:not([hidden]) { width: auto; justify-content: flex-start; padding: 0 4px 0 12px; }
+html.rail-wide .rail .vault-chip > span { display: inline; flex: 1; font-weight: 600; }
+html.rail-wide .rail .vault-chip button { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 7px; }
+html.rail-wide .rail .vault-chip button:hover { background: rgba(124, 92, 255, .16); }
+html.rail-wide .rail .vault-chip button svg { width: 14px; height: 14px; }
+html.rail-wide .rail .side-dock { justify-content: flex-start; }
+#rail-tog .ri { transition: transform .2s; }
+html.rail-wide #rail-tog .ri { transform: scaleX(-1); }
+
+/* 播放器：电脑上收成导航栏底部的小圆钮（正在放的时候外圈转），点一下展开 / 收起播放条 */
+@media (min-width: 761px) {
+  #pb-fab, #pb-fab[hidden] { display: grid !important; left: calc(var(--rail-w) / 2 - 20px); right: auto; bottom: 144px; width: 40px; height: 40px; z-index: 43;
+    background: var(--field); box-shadow: none; transition: left .2s cubic-bezier(.2, .8, .2, 1); }
+  html.rail-wide #pb-fab, html.rail-wide #pb-fab[hidden] { left: 20px; bottom: 66px; }
+  #pb-fab .pb-fab-art { width: 32px; height: 32px; }
+  #pb-fab .pb-fab-art .art { --s: 32px !important; }
+  #pb-fab .pb-fab-art:empty::before { font-size: 16px; }
+  #pb-fab:not([hidden]) { outline: 2px solid var(--line-2); outline-offset: 2px; }  /* 播放条收着：圆钮带一圈，表示点了会展开 */
+}
+
+/* ---------------- 内容区 ---------------- */
+.main { padding: 0 24px 32px 8px; }
+.page-head { min-height: 64px; margin-top: 0 !important; margin-bottom: 4px !important; align-items: center; }
+.page-title { font-size: 18px; font-weight: 600; letter-spacing: -.005em; }
+.card { background: var(--card); border: 0 !important; box-shadow: none !important; border-radius: var(--r); }
+.vcard, .work { background: var(--card); border-color: transparent; box-shadow: none; }
+html[data-theme="dark"] .card, html[data-theme="dark"] .vcard, html[data-theme="dark"] .work { background: var(--card); }
+.hr { background: var(--line); }
+
+/* 按钮：主按钮是墨色（深色里是白），其余是浅底 */
+.btn { background: var(--field); color: var(--text); border-radius: 11px; font-weight: 550; }
+.btn:hover { background: color-mix(in srgb, var(--field) 70%, var(--text) 8%); }
+.btn.grad, .btn.primary, html[data-theme="dark"] .btn.grad, html[data-theme="dark"] .btn.primary { background: var(--ink); color: var(--on-ink); box-shadow: none; filter: none; }
+.btn.grad:hover, .btn.primary:hover, html[data-theme="dark"] .btn.grad:hover, html[data-theme="dark"] .btn.primary:hover { background: color-mix(in srgb, var(--ink) 86%, var(--canvas)); box-shadow: none; transform: none; }
+.btn.grad::before, .btn.grad::after, .btn.grad > .wave { display: none !important; }
+.btn.ghost { background: transparent; color: var(--text-2); }
+.btn.ghost:hover { background: var(--hover); color: var(--text); }
+.btn.danger { color: var(--red); }
+
+/* 输入框：浅底、不描边；聚焦时整块轻轻描一圈（不用刺眼的蓝框） */
+.input, .textarea, .select, html[data-theme="dark"] .input, html[data-theme="dark"] .textarea, html[data-theme="dark"] .select { background: var(--field); border-color: transparent; }
+.input:focus, .textarea:focus, .select:focus, html[data-theme="dark"] .input:focus, html[data-theme="dark"] .textarea:focus, html[data-theme="dark"] .select:focus { background: var(--field); border-color: transparent; box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--ink) 35%, transparent); }
+
+/* 分段选择 */
+.seg { background: var(--field); border-radius: 11px; padding: 3px; }
+.seg button { color: var(--text-2); border-radius: 8px; }
+.seg button:hover { color: var(--text); }
+.seg button.on, html[data-theme="dark"] .seg button.on { background: var(--card); color: var(--text); box-shadow: 0 1px 2px rgba(0, 0, 0, .08); }
+html[data-theme="dark"] .seg button.on { background: #2e2e31; box-shadow: none; }
+
+/* 开关：不用绿色；开 = 墨色，滑块带一点玻璃高光，动得像弹簧 */
+.switch { width: 38px; height: 22px; }
+.switch span { background: rgba(127, 127, 127, .26); border-radius: 11px; box-shadow: inset 0 1px 2px rgba(0, 0, 0, .22); transition: background-color .25s; }
+.switch span::after { width: 18px; height: 18px; left: 2px; top: 2px; background: linear-gradient(180deg, rgba(255, 255, 255, .98), rgba(235, 235, 240, .92));
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .3), inset 0 -1px 1px rgba(0, 0, 0, .06), inset 0 1px 1px rgba(255, 255, 255, .9); transition: transform .32s cubic-bezier(.3, 1.4, .5, 1), background .25s; }
+.switch input:checked + span { background: var(--ink); }
+.switch input:checked + span::after { transform: translateX(16px); }
+html[data-theme="dark"] .switch input:checked + span::after { background: linear-gradient(180deg, #2a2a2c, #111113); box-shadow: 0 1px 3px rgba(0, 0, 0, .5), inset 0 1px 1px rgba(255, 255, 255, .12); }
+.switch input:focus-visible + span { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+/* 弹窗、浮层、提示 */
+.modal, html[data-theme="dark"] .modal { background: var(--pop); border-radius: 20px; box-shadow: var(--sh); }
+.pop, .qpanel, html[data-theme="dark"] .pop, html[data-theme="dark"] .qpanel { background: var(--pop); box-shadow: var(--sh); }
+.tip-float { background: var(--pop); color: var(--text); box-shadow: var(--sh); border: 0; }
+.pbar, html[data-theme="dark"] .pbar { background: color-mix(in srgb, var(--pop) 92%, transparent); border-color: transparent; box-shadow: var(--sh); }
+
+/* ---------------- 手机：底部 播放 · 创作 · 素材 · 工具 · 更多；点一类从下面弹出这一类的页面 ---------------- */
+@media (max-width: 760px) {
+  .app { grid-template-columns: minmax(0, 1fr) !important; }
+  .rail { position: fixed; z-index: 41; left: 0; right: 0; bottom: 0; top: auto; height: auto; flex-direction: row; align-items: stretch; gap: 0; padding: 4px 6px calc(4px + env(safe-area-inset-bottom));
+    background: color-mix(in srgb, var(--canvas) 92%, transparent); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border-top: 1px solid var(--line); }
+  html.rail-wide .rail { padding: 4px 6px calc(4px + env(safe-area-inset-bottom)); align-items: stretch; }
+  .rail .brand, #rail-tog, .rail .side-dock, .rail .vault-chip { display: none !important; }
+  .rnav, html.rail-wide .rnav { flex-direction: row; flex: 4 1 0; gap: 0; align-items: stretch; }
+  .cat, html.rail-wide .cat { flex: 1 1 0; width: auto; margin: 0 !important; position: static; }
+  .cat > .cat-b, html.rail-wide .cat > .cat-b, html.rail-wide .cat > button.cat-b { display: flex; width: 100%; flex-direction: column; gap: 2px; padding: 5px 0 3px; font-size: 10.5px; color: var(--text-3); background: none; }
+  .cat-b .ic, html.rail-wide .cat > a.cat-b .ic { width: 24px; height: 24px; background: none !important; } .cat-b .ri, html.rail-wide .cat > a.cat-b .ri { width: 24px; height: 24px; }
+  .cat.on .cat-b, .cat-b.active { color: var(--text); }
+  .fly, html.rail-wide .fly { position: fixed; left: 8px; right: 8px; top: auto; bottom: calc(64px + env(safe-area-inset-bottom)); min-width: 0; padding: 8px; border-radius: 20px; background: var(--pop); box-shadow: var(--sh);
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(8px); transition: opacity .16s, transform .2s cubic-bezier(.2, .8, .2, 1), visibility 0s .2s; }
+  .fly::before { display: none; }
+  .cat.open .fly { opacity: 1; visibility: visible; pointer-events: auto; transform: none; transition: opacity .16s, transform .2s cubic-bezier(.2, .8, .2, 1), visibility 0s; }
+  .fly a, html.rail-wide .fly a { flex-direction: column; justify-content: center; gap: 6px; padding: 14px 4px; border-radius: 14px; font-size: 12.5px; white-space: nowrap; }
+  .fly a .ri { width: 24px; height: 24px; }
+  .rail-foot, html.rail-wide .rail-foot { flex: 1 1 0; margin: 0; padding: 0; align-items: stretch; }
+  .rail-row, html.rail-wide .rail-row { flex: 1; flex-direction: column; }
+  #side-gear { width: 100%; height: auto; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 5px 0 3px; border-radius: 12px; font-size: 10.5px; }
+  #side-gear .ri:not(.more-ic) { display: none; }
+  #side-gear .more-ic, #side-gear .tb-l { display: block; }
+  #side-gear .more-ic { width: 24px; height: 24px; }
+  #side-gear:hover { background: none; }
+  #side-gear .dot { right: calc(50% - 16px); top: 3px; }
+  .rail-dim { position: fixed; inset: 0; z-index: 40; background: rgba(0, 0, 0, .35); opacity: 0; pointer-events: none; transition: opacity .16s; }
+  .rail-dim.on { opacity: 1; pointer-events: auto; }
+  .main { padding: 0 14px calc(96px + env(safe-area-inset-bottom)); }
+  .page-head { min-height: 56px; padding-top: calc(env(safe-area-inset-top) + 12px); }  /* iPhone 顶部状态栏下面系统会糊一条：标题往下让一点，不被糊到（2026-11-07） */
+  .page-title { font-size: 20px; }
+}
+@media (prefers-reduced-motion: reduce) { .fly, .cat-b .ic, #rail-tog .ri, .switch span, .switch span::after { transition: none !important; } }
+html[data-theme="dark"] .switch input:checked + span { background: var(--ink); }
+
+/* ---------------- 生图 / 生视频（宽窗口）：结果在左、选项在右栏、提示词在底部居中 ---------------- */
+.b5-acts { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.b5-ib { all: unset; box-sizing: border-box; cursor: pointer; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; color: var(--text-3); background: var(--card); transition: background-color .15s, color .15s; }
+.b5-ib:hover { color: var(--text); background: var(--field); }
+.b5-ib.on { color: var(--text); }
+.b5-ib:focus-visible { outline: 2px solid var(--blue); }
+.b5-ib svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.b5-opt, .b5-drag { display: none; }
+@media (min-width: 1200px) {
+  .main:has(> .ig-grid.b5-on) { padding-bottom: 12px; }
+  .ig-grid.ig-v2.b5-on { display: grid; grid-template-columns: minmax(0, 1fr) var(--iw, 300px); grid-template-rows: minmax(0, 1fr) 64px; gap: 14px; align-items: stretch;
+    height: calc(100vh - var(--b5top, 68px) - 12px) !important; min-height: 480px; position: relative; }
+  .ig-grid.b5-on > .stack { grid-column: 1; grid-row: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px; }
+  .ig-grid.b5-on > .stack > .ig-gal-card { flex: 1 1 auto; height: auto !important; min-height: 0 !important; }
+  .ig-grid.b5-on > .b5-opt { display: flex; flex-direction: column; grid-column: 2; grid-row: 1; min-height: 0; padding: 0; overflow: hidden; }
+  .ig-grid.b5-on .b5-sc { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 14px; display: flex; flex-direction: column; scrollbar-width: thin; }
+  .ig-grid.b5-on .b5-sc > .ig-pw { display: flex !important; flex-direction: column; margin: 0; padding: 0; overflow: visible; }
+  .ig-grid.b5-on > .b5-drag { display: block; position: absolute; top: 0; bottom: 78px; right: calc(var(--iw, 300px) + 2px); width: 10px; cursor: col-resize; z-index: 5; }
+  .ig-grid.b5-on > .b5-drag::after { content: ''; position: absolute; top: 50%; left: 4px; width: 3px; height: 36px; margin-top: -18px; border-radius: 2px; background: var(--line-2); opacity: 0; transition: opacity .15s; }
+  .ig-grid.b5-on > .b5-drag:hover::after, .ig-grid.b5-on > .b5-drag.on::after { opacity: 1; background: var(--text-3); }
+  /* 底部输入框 */
+  .ig-grid.b5-on > .ig-top-f { position: absolute; top: auto !important; left: 50%; bottom: 4px; transform: translateX(-50%); z-index: 30; width: min(560px, calc(100% - 40px)); height: auto; min-height: 0 !important; margin: 0 !important;
+    display: flex; flex-direction: row; align-items: center; gap: 8px !important; padding: 8px 8px 8px 16px; border-radius: 18px; overflow: visible !important;
+    background: color-mix(in srgb, var(--field) 94%, transparent); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); box-shadow: var(--sh);
+    transition: width .22s cubic-bezier(.2, .8, .2, 1), padding .22s; }
+  html[data-theme="dark"] .ig-grid.b5-on > .ig-top-f { background: color-mix(in srgb, #232325 94%, transparent); }
+  .ig-grid.b5-on > .ig-top-f.open { width: min(860px, calc(100% - 40px)); flex-direction: column; align-items: stretch; padding: 12px 12px 10px 16px; gap: 6px !important; box-shadow: var(--sh), 0 0 0 1.5px color-mix(in srgb, var(--ink) 30%, transparent); }
+  .ig-grid.b5-on > .ig-top-f > * { order: 0 !important; }
+  .ig-grid.b5-on > .ig-top-f > .label { display: none !important; }
+  .ig-grid.b5-on > .ig-top-f.open > .label { display: flex !important; align-items: center; gap: 8px; margin: 0; order: -1 !important; font-weight: 400; }
+  .ig-grid.b5-on > .ig-top-f.open > .label > span:first-child:not([class]) { display: none; }
+  .ig-grid.b5-on > .ig-top-f > .ig-comp-top { flex: 1 1 auto; min-width: 0; margin: 0 !important; display: block !important; background: none !important; box-shadow: none !important; clip-path: none !important; border-radius: 0 !important; }
+  .ig-grid.b5-on > .ig-top-f .ig-comp-top .textarea { min-height: 0 !important; max-height: 24px; padding: 0 !important; background: none !important; box-shadow: none !important; border: 0 !important; font-size: 14.5px; line-height: 24px; resize: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ig-grid.b5-on > .ig-top-f.open .ig-comp-top .textarea { white-space: pre-wrap; overflow-y: auto; line-height: 1.6; }
+  .ig-grid.b5-on > .ig-top-f .ig-crow { padding: 0; display: block !important; }
+  .ig-grid.b5-on > .ig-top-f > .ig-cbar { flex: none; margin: 0 !important; padding: 0 !important; border: 0 !important; background: none !important; box-shadow: none !important; position: static !important; }
+  .ig-grid.b5-on > .ig-top-f:not(.open) > .ig-cbar .bar-l { display: none; }
+  .ig-grid.b5-on > .ig-top-f:not(.open) > :not(.ig-comp-top):not(.ig-cbar):not(.b5-refs) { display: none !important; }
+  .ig-grid.b5-on > .ig-top-f .ig-gen { height: 34px; padding: 0 16px; border-radius: 10px; font-size: 13.5px; }
+  .ig-grid.b5-on > .ig-top-f.open .ig-gen { height: 38px; padding: 0 22px; border-radius: 11px; font-size: 14px; }
+  .ig-grid.b5-on > .ig-top-f .ig-gen > svg { display: none; }
+  /* 右栏收起：结果占满，选项是输入框里的“值 ▾”，点了往上弹 */
+  .ig-grid.b5-on.b5-pc { grid-template-columns: minmax(0, 1fr); }
+  .ig-grid.b5-on.b5-pc > .b5-opt { display: block; position: fixed; z-index: 60; left: 0; top: 0; width: 0; height: 0; overflow: visible; padding: 0; background: none; }
+  .ig-grid.b5-on.b5-pc > .b5-drag { display: none; }
+  .ig-grid.b5-on.b5-pc > .b5-opt .b5-sc { display: contents; }
+  .ig-grid.b5-on.b5-pc .ig-panel[hidden] { display: none !important; }
+  .ig-grid.b5-on.b5-pc .ig-panel:not([hidden]) { display: block !important; position: fixed !important; z-index: 70; width: min(420px, calc(100vw - 32px)) !important; max-height: 60vh !important; overflow-y: auto !important;
+    padding: 16px 16px 4px !important; border-radius: 16px; background: var(--pop) !important; box-shadow: var(--sh) !important; }
+  .ig-grid.b5-on.b5-pc > .ig-top-f.open .ig-chip:not([hidden]) { display: inline-flex !important; }  /* 2026-11-10：不带 :not([hidden]) 时，当前模型用不了的按钮（Qwen 2.1 的“参考姿势”、文生图时的“文生图”）也被显示出来，点开是空框 */
+  .ig-grid.b5-on:not(.b5-pc) > .ig-top-f .ig-chip { display: none !important; }
+  /* 提示词在右栏（设置里可选）：和以前一样，只是放在右边 */
+  .ig-grid.ig-v2.b5-side > .ig-top-f { order: 2; }
+}
+/* 精简模式按钮（只在浏览器里有）：放进导航栏底部，不再浮在页面右上角 */
+.rail .cp-open { position: static; width: 40px; height: 40px; border-radius: 12px; color: var(--text-3); background: none; }
+.rail .cp-open:hover { background: var(--hover); color: var(--text); }
+@media (max-width: 760px) { .rail .cp-open { display: none !important; } }
+/* 主按钮“生成”：墨色 */
+.ig-gen, html[data-theme="dark"] .ig-gen { background: var(--ink) !important; color: var(--on-ink) !important; box-shadow: none !important; filter: none !important; }
+.ig-gen:hover { background: color-mix(in srgb, var(--ink) 86%, var(--canvas)) !important; }
+.ig-gen:disabled { opacity: .45; }
+@media (min-width: 1200px) {
+  .ig-grid.b5-on > .ig-top-f > .ig-comp-top { flex: 1 1 auto !important; }
+  .ig-grid.b5-on > .ig-top-f.open > .ig-comp-top { flex: none !important; }
+  .ig-grid.b5-on > .ig-top-f:not(.open) > .ig-cbar > :not(.bar-r) { display: none !important; }
+  .ig-grid.b5-on > .ig-top-f > .ig-cbar { display: flex !important; flex-wrap: nowrap !important; align-items: center; gap: 6px; }
+  .ig-grid.b5-on > .ig-top-f.open > .ig-cbar > .bar-l { flex: 1 1 auto; min-width: 0; order: 1 !important; }
+  .ig-grid.b5-on > .ig-top-f.open > .ig-cbar > .vd-sum { position: static !important; order: 2 !important; flex: 0 1 auto; min-width: 0; max-width: 40%; height: auto !important; width: auto !important; margin: 0 4px 0 0 !important; padding: 0 !important; border: 0 !important; background: none !important; }
+  .ig-grid.b5-on > .ig-top-f.open > .ig-cbar > .vd-sum .vd-sum-t { height: auto !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-3); font-size: 12.5px; }
+  .ig-grid.b5-on > .ig-top-f > .ig-cbar > .bar-r { order: 3 !important; flex: none !important; width: auto !important; margin: 0 !important; }
+  .ig-grid.b5-on > .ig-top-f .ig-gen { width: auto !important; flex: none !important; }
+}
+@media (min-width: 1200px) { .ig-grid.b5-on > .ig-top-f > .ig-cbar.has-sum { padding-top: 0 !important; } .ig-grid.b5-on > .ig-top-f > .ig-cbar > .vd-sum > .vd-sum-t { display: block; -webkit-line-clamp: unset; } }
+
+/* 生视频标题栏：左 上下文切换 ▾，中 视图，右 图标按钮 */
+.page-head.b5-head { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 12px; }
+.page-head.b5-head > :not(.b5-ctx):not(.b5-mid):not(.b5-acts):not(.b5-l) { display: none !important; }
+.b5-ctx { all: unset; box-sizing: border-box; justify-self: start; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 10px 0 12px; margin-left: -12px; border-radius: 10px; font-size: 17px; font-weight: 600; color: var(--text); }
+.b5-ctx:hover { background: var(--hover); }
+.b5-ctx:focus-visible { outline: 2px solid var(--blue); }
+.b5-ctx svg { width: 16px; height: 16px; fill: none; stroke: var(--text-3); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.b5-mid { justify-self: center; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.b5-mid .seg { background: var(--card); }
+.b5-mid .seg button.on, html[data-theme="dark"] .b5-mid .seg button.on { background: var(--field); box-shadow: none; }
+.b5-head .b5-acts { justify-self: end; }
+.b5-menu { display: flex; flex-direction: column; gap: 2px; }
+.b5-menu button { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 9px; font-size: 14px; color: var(--text); }
+.b5-menu button:hover, .b5-menu button:focus-visible { background: var(--hover); }
+.b5-menu svg { width: 16px; height: 16px; margin-left: auto; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; opacity: 0; }
+.b5-menu .on svg { opacity: 1; }
+.b5-sc > .ve-base-h { display: flex; flex-direction: column; align-items: stretch; gap: 6px; margin-bottom: 14px; }
+.b5-sc > .ve-base-h .seg { display: flex; } .b5-sc > .ve-base-h .seg button { flex: 1; }
+.vd-allb.on { color: var(--text); background: var(--field); }
+@media (max-width: 760px) { .b5-ctx { font-size: 20px; } .page-head.b5-head { grid-template-columns: auto 1fr auto; } }
+.ig-grid.b5-on .b5-sc { container: vdleft / inline-size; }
+html[data-theme="dark"] .vcard, html[data-theme="dark"] .work, .vcard, .work { border-color: transparent; }
+@media (min-width: 1200px) { .main:has(> .ig-grid.ve-on) > .b5-head .b5-mid .vd-dual-t { display: inline-flex; } }
+.b5-mid .vd-dual-t button { height: 30px; padding: 0 16px; }
+.b5-sc .seg button { white-space: nowrap; padding-left: 6px; padding-right: 6px; min-width: 0; }
+@media (min-width: 761px) { .vd-gbase-f:not([hidden]) { display: block !important; } }
+@media (min-width: 1200px) {
+  .ig-grid.ig-v2.b5-side { grid-template-columns: minmax(0, 1fr) minmax(360px, 32%) !important; gap: 14px; }
+  .ig-grid.ig-v2.b5-side > .stack { order: 1; }
+  .ig-grid.ig-v2.b5-side > .ig-top-f { top: 0; }
+}
+@media (min-width: 1200px) { .ig-grid.ig-v2.b5-side > .ig-top-f, .ig-grid.ig-v2.b5-side .ig-gal-card { height: calc(100vh - var(--b5top, 68px) - 16px) !important; } .main:has(> .ig-grid.b5-side) { padding-bottom: 12px; } }
+/* 选中状态、主操作：墨色（蓝色只留给进度和链接） */
+.chip.on, .gal-chip.on, html[data-theme="dark"] .gal-chip.on { background: var(--ink); border-color: var(--ink); color: var(--on-ink); }
+.ap.on .ap-btn, html[data-theme="dark"] .ap.on .ap-btn { background: var(--ink); color: var(--on-ink); }
+.pg-send, html[data-theme="dark"] .pg-send { background: var(--ink); color: var(--on-ink); }
+.pg-send:disabled { opacity: .35; }
+.pg-send.stop, html[data-theme="dark"] .pg-send.stop { background: var(--field); color: var(--text); }
+.b5-sc > .ig-model-btn { flex: none !important; width: 100%; height: auto; margin: 0 0 14px; justify-content: space-between; }
+.main[data-page="img"] > *, .main[data-page="video"] > * { max-width: none !important; }  /* 生图、生视频：铺满（结果越大越好看） */
+@media (max-width: 760px) {
+  .rail { box-sizing: border-box; max-width: 100vw; }
+  .rnav, .rail-foot, .rail-row, .cat, .cat > .cat-b, #side-gear { min-width: 0 !important; }
+  .cat > .cat-b > span, #side-gear .tb-l { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+}
+@media (max-width: 760px) { .main { overflow-x: clip; } }  /* 手机：里面的按钮加大的点按区域（::after）不再把整页撑宽（整页会被缩小一点、底栏被挤出去） */
+.b5-ib::before, .b5-ib::after { content: none !important; }
+
+/* ===== 2026-11-07 第 2 轮：成品区不要框中框（参考可灵）——结果直接浮在画布上，缩略图在左边一列（和导航栏同一个底色）或下面一排 ===== */
+@media (min-width: 1200px) {
+  .ig-grid.b5-on .ig-gal-card { background: transparent !important; padding: 0 !important; border-radius: 0 !important; box-shadow: none !important; overflow: visible; }
+  .ig-grid.b5-on .ig-gal-card > .row.between:first-child { min-height: 0; justify-content: flex-end; gap: 8px; }
+  .ig-grid.b5-on .ig-gal-card > .row.between:first-child > h3 { display: none; }   /* “生成结果 / 全部视频 / 剪辑原视频”：标题栏中间已经写了在看什么 */
+  .ig-grid.b5-on .ig-gal-card > .row.between:first-child:not(:has(:not(h3):not([hidden]):not(.gal-home))) { display: none; }
+  .ig-grid.b5-on #vd-stage, .ig-grid.b5-on #ig-stage { background: transparent !important; box-shadow: none !important; }
+  /* 画面不撑满：左右留出空，高度最多到窗口的七成左右；视频本身是圆角，没有外框 */
+  .ig-grid.b5-on #vd-stage:not(:empty), .ig-grid.b5-on #ig-stage:not(:empty) { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 0; padding: 0 clamp(0px, 3vw, 72px); }
+  .ig-grid.b5-on #vd-stage > video.vd-player { flex: 0 1 auto; width: auto; max-width: 100%; height: min(100%, calc(100vh - 280px)); max-height: none; min-height: 0; object-fit: contain; border-radius: 14px; }
+  .ig-grid.b5-on #vd-stage > .vd-stage-bar { width: 100%; max-width: 980px; flex: none; }
+  .ig-grid.b5-on .vd-stage-bar .btn.small { width: 36px; height: 36px; padding: 0; justify-content: center; border-radius: 10px; background: transparent; color: var(--text-2); font-size: 0; gap: 0; }
+  .ig-grid.b5-on .vd-stage-bar .btn.small:hover { background: var(--hover); color: var(--text); }
+  .ig-grid.b5-on .vd-stage-bar .btn.small svg { width: 19px; height: 19px; }
+  .ig-grid.b5-on .vd-stage-bar .btn.small.danger:hover { color: var(--red); }
+  .ig-grid.b5-on .vd-stage-i { color: var(--text-3); }
+  /* 缩略图在左边：一列，只放缩略图（不写名字），贴着导航栏 */
+  .ig-grid.b5-on .ig-gal-card.port:has(> .vd-stage:not(:empty), > .ig-stage:not(:empty)) { grid-template-columns: 72px minmax(0, 1fr) !important; column-gap: 20px; grid-template-rows: auto auto minmax(0, 1fr); }
+  .ig-grid.b5-on .ig-gal-card.port > .vd-stage:not(:empty), .ig-grid.b5-on .ig-gal-card.port > .ig-stage:not(:empty) { grid-column: 2 !important; }
+  .ig-grid.b5-on .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal, .ig-grid.b5-on .ig-gal-card.port > .ig-stage:not(:empty) + .ig-gal {
+    grid-column: 1 !important; grid-row: 1 / -1 !important; grid-template-columns: minmax(0, 1fr) !important; grid-auto-rows: auto !important; row-gap: 8px !important; align-content: start; overflow-y: auto; scrollbar-width: none; padding: 2px; margin-left: -6px; }
+  .ig-grid.b5-on .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal .vd-tile, .ig-grid.b5-on .ig-gal-card.port > .ig-stage:not(:empty) + .ig-gal .ig-tile { grid-row-end: auto !important; width: 100% !important; height: auto !important; aspect-ratio: 3 / 4 !important; margin: 0 !important; border-radius: 10px; }
+  .ig-grid.b5-on .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal .vd-tile :is(.vd-t-i, .vd-tile-i, .ig-ju-i, .vd-t-info, .vd-meta, figcaption, .vd-del, .vd-t-del) { display: none !important; }
+  .ig-grid.b5-on .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal .vd-tile img { width: 100%; height: 100%; object-fit: cover; }
+}
+@media (min-width: 1200px) { .ig-grid.b5-on #vd-stage > .vd-stage-bar { width: auto; max-width: 100%; align-self: center; gap: 14px; } .ig-grid.b5-on #vd-stage > .vd-stage-bar > .spacer { display: none; } }
+
+/* 上传框：统一成 92×92 的小方块（图标 + 名字 + 可选/必填），点一下弹出来源菜单；尾帧、参考图、图 2 同一个样子 */
+.ig-src.empty.b5-up, .vd-f2.empty, .ig-ref.empty { all: unset; box-sizing: border-box; cursor: pointer; flex: none; width: 92px !important; height: 92px !important; min-height: 0 !important; padding: 6px !important; border-radius: 14px;
+  display: flex !important; flex-direction: column; align-items: center; justify-content: center; gap: 3px; background: var(--field); border: 1.5px dashed var(--line-2) !important; color: var(--text-2); font-size: 13px; text-align: center; transition: border-color .15s, color .15s, background-color .15s; }
+.ig-src.empty.b5-up:hover, .vd-f2.empty:hover, .ig-ref.empty:hover, .ig-src.empty.b5-up.over, .vd-f2.empty.over { border-color: var(--text-3) !important; color: var(--text); background: var(--hover); }
+.ig-src.empty.b5-up:focus-visible, .vd-f2.empty:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.ig-src.empty.b5-up svg, .vd-f2.empty svg, .ig-ref.empty svg { width: 20px !important; height: 20px !important; margin: 0 !important; }
+.ig-src.empty.b5-up > div { font-size: 13px; line-height: 1.2; margin: 0; }
+.ig-src.empty.b5-up .tiny, .vd-f2.empty .tiny { font-size: 11px; color: var(--text-3); margin: 0; }
+.b5-up .vd-pick-in, #ve-pick, #ig-src-pick ~ .ig-src-btns, #vd-src .vd-src-row #vd-paste, #vd-src .vd-src-row #vd-up, #vd-src .vd-src-row #vd-pick { display: none !important; }
+.vd-frames:has(> .b5-up) { display: flex !important; gap: 10px; justify-content: flex-start; }
+.ve-src:has(> .vd-frames > .b5-up), #ve-src .vd-frames { justify-content: flex-start; }
+
+/* 输入框里的图标开关：只有图标，鼠标停上去有名字；开着 = 墨色底 */
+.b5-ict { width: 34px !important; padding: 0 !important; justify-content: center; }
+.b5-ict > span, .b5-ict > input { display: none !important; }
+.b5-ict svg { width: 17px !important; height: 17px !important; }
+.b5-ict.on { background: var(--ink) !important; color: var(--on-ink) !important; }
+.b5-ict:disabled { opacity: .4; cursor: default; }
+#vd-fold { display: none !important; }                             /* “收起 / 展开参数”：没有用处 */
+.b5-peek { width: 34px !important; height: 34px !important; padding: 0 !important; position: static !important; justify-content: center; display: inline-flex !important; align-items: center; background: none !important; box-shadow: none !important; }
+.b5-peek::after { content: none !important; }
+.b5-peek svg { width: 17px !important; height: 17px !important; }
+/* 右栏里的选项一项一行，不挤 */
+.ig-grid.b5-on .b5-sc .ve-opts { grid-template-columns: minmax(0, 1fr) !important; }
+.vd-follow.on, .ve-tog.on, html[data-theme="dark"] .vd-follow.on { background: var(--ink) !important; color: var(--on-ink) !important; border-color: transparent !important; }
+@media (min-width: 1200px) {
+  .ig-grid.b5-on > .ig-top-f { transition: box-shadow .2s !important; overflow: hidden !important; }
+  .ig-grid.b5-on .b5-sc .ve-ic svg { display: none !important; } .ig-grid.b5-on .b5-sc .ve-ic .vt { display: inline !important; }   /* 右栏一项一行：声音写字（原声 / 重新生成 / 无声） */
+}
+
+/* 导航栏（第 2 轮）：分类按窗口高度均匀往下分布；显存 = 芯片图标 + 一条细进度条（数字在鼠标提示里）；展开时整栏有底色和内容分开 */
+@media (min-width: 761px) {
+  .rnav { gap: clamp(4px, calc((100vh - 640px) * .06), 26px); margin-top: clamp(0px, calc((100vh - 700px) * .08), 40px); }
+  .rail .side-dock { width: 40px; }
+  .rail .side-dock .sd-gpu { width: 40px !important; height: 40px !important; padding: 0 !important; border-radius: 12px; display: flex !important; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: none !important; color: var(--text-3); }
+  .rail .side-dock .sd-gpu:hover { background: var(--hover) !important; color: var(--text); }
+  .rail .side-dock .sd-gpu svg { width: 19px; height: 19px; }
+  .rail .side-dock .sd-gpu em { display: none; }
+  .rail .side-dock .sd-bar { display: block !important; width: 18px; height: 3px; border-radius: 2px; background: var(--line-2); }
+  .rail .side-dock .sd-bar i { background: var(--text-3); }
+  .rail .side-dock .sd-n { position: absolute; top: 3px; right: 3px; font-size: 10px; }
+  html.rail-wide .rail { background: var(--card); }
+  html.rail-wide .rail .side-dock { width: auto; }
+  html.rail-wide .rail .side-dock .sd-gpu { width: auto !important; flex-direction: row; padding: 0 10px !important; gap: 8px; }
+  html.rail-wide .rail .side-dock .sd-gpu em { display: inline; font-size: 12px; }
+  html.rail-wide .rail .side-dock .sd-bar { width: 30px; }
+  html.rail-wide .rnav { margin-top: 8px; }
+}
+
+/* 提示浮层：和菜单同一种样子，小一点 */
+.tip-float, html[data-theme="dark"] .tip-float { background: var(--pop); color: var(--text); box-shadow: var(--sh); border: 0; border-radius: 10px; padding: 7px 11px; font-size: 12.5px; line-height: 1.55; max-width: min(280px, calc(100vw - 24px)); }
+.tip-float b { font-weight: 600; }
+
+/* ===== AI 助手：照 ChatGPT 的样子——左边对话历史（不加框），中间一列对话（最宽 768，居中），输入框是圆角胶囊；没有消息时标题和输入框在页面中间 ===== */
+@media (min-width: 761px) {
+  .main[data-page="prompt"] > * { max-width: none !important; }
+  .main[data-page="prompt"] .pg-grid { grid-template-columns: 248px minmax(0, 1fr) clamp(260px, 22vw, 320px); gap: 0; align-items: stretch; }
+  .main[data-page="prompt"] .pg-grid.side-off { grid-template-columns: 248px minmax(0, 1fr) !important; }
+  .main[data-page="prompt"] .pg-hist { background: transparent !important; padding: 4px 14px 8px 0 !important; overflow-y: auto; height: 100%; border-right: 1px solid var(--line) !important; border-radius: 0 !important; }
+  .main[data-page="prompt"] .pg-hist [data-h] { border-radius: 10px; }
+  .main[data-page="prompt"] .pg-card { position: relative; background: transparent !important; padding: 0 28px !important; height: 100%; min-height: 0; }
+  .main[data-page="prompt"] .pg-top { flex: none; }
+  .main[data-page="prompt"] .pg-msgs { flex: 1 1 auto; max-height: none; width: 100%; max-width: 768px; margin: 0 auto; padding-top: 12px; }
+  .main[data-page="prompt"] .pg-in { flex: none; border-top: 0; width: 100%; max-width: 768px; margin: 0 auto 8px; padding-top: 8px; }
+  .main[data-page="prompt"] .pg-composer { border: 0; background: var(--field); border-radius: 28px; padding: 8px 8px 8px 10px; align-items: center; }
+  .main[data-page="prompt"] .pg-composer:focus-within { border-color: transparent; box-shadow: 0 0 0 1px var(--line-2); }
+  .main[data-page="prompt"] .pg-composer .textarea { min-height: 40px; padding: 9px 8px; font-size: 15px; }
+  .main[data-page="prompt"] .pg-card.is-empty { justify-content: center; }
+  .main[data-page="prompt"] .pg-card.is-empty > .pg-top { position: absolute; top: 0; left: 28px; right: 28px; }
+  .main[data-page="prompt"] .pg-card.is-empty .pg-msgs { flex: none; min-height: 0; overflow: visible; padding: 0; }
+  .main[data-page="prompt"] .pg-empty { padding: 0 0 22px; }
+  .main[data-page="prompt"] .pg-empty b { font-size: 26px; font-weight: 600; letter-spacing: -.01em; }
+  .main[data-page="prompt"] .pg-side-col > .card { border-radius: 18px; }
+}
+/* 2026-11-09：“查看完整提示词”在输入框外面的右侧（输入框本身宽度不变，按钮伸到外面） */
+.pg-in-row { display: flex; align-items: flex-end; gap: 8px; }
+.pg-in-row > .pg-composer { flex: 1 1 auto; min-width: 0; }
+.pg-in-row > .prompt-peek.pg-peek { position: relative; flex: none; width: 40px; height: 40px; margin-bottom: 8px; border-radius: 50%; opacity: 1; color: var(--text-2); background: var(--field); transform: none; }
+@media (hover: hover) { .pg-in-row > .prompt-peek.pg-peek:hover { color: var(--text); background: var(--line); } }
+.pg-in-row > .prompt-peek.pg-peek:focus-visible { color: var(--text); background: var(--line); }
+@media (min-width: 900px) { .main[data-page="prompt"] .pg-in-row { margin-right: -48px; } }
+@media (min-width: 761px) { .main[data-page="prompt"] .pg-card.is-empty .pg-msgs { flex: 0 0 auto !important; height: auto !important; min-height: 0 !important; } .main[data-page="prompt"] .pg-card.is-empty > .pg-in { margin-bottom: 12vh; } }
+
+/* 音色头像：不再是发亮的彩色球——淡淡的底色 + 同色的声波图标（每个音色颜色不同，但都压得很低） */
+.vav:not(.none), html[data-theme="dark"] .vav:not(.none) { position: relative; background: color-mix(in srgb, var(--c2) 22%, var(--field)) !important; box-shadow: none !important; animation: none; }
+.vav:not(.none)::after { content: ''; position: absolute; inset: 27%; background: color-mix(in srgb, var(--c2) 80%, var(--text)); opacity: .9;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round'%3E%3Cpath d='M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round'%3E%3Cpath d='M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4'/%3E%3C/svg%3E") center / contain no-repeat; }
+.vav.sm:not(.none)::after { inset: 22%; }
+.vav.playing:not(.none) { box-shadow: 0 0 0 2px color-mix(in srgb, var(--c2) 70%, transparent) !important; animation: none !important; }
+.vcard .vav { --s: 52px !important; }
+
+/* 大屏（27 寸全屏）：内容不再铺满——每页有一个合适的最大宽度，居中 */
+.main:not([data-page="play"]):not([data-page="img"]):not([data-page="video"]):not([data-page="prompt"]) > * { max-width: 1440px; }
+.main[data-page="tts"] > *, .main[data-page="vc"] > * { max-width: 1400px; }
+.main[data-page="play"] > * { max-width: 1600px; margin-left: auto; margin-right: auto; }
+.main[data-page="img"] > *, .main[data-page="video"] > * { max-width: 1840px !important; margin-left: auto !important; margin-right: auto !important; }
+.main[data-page="prompt"] > * { max-width: 1600px !important; margin-left: auto; margin-right: auto; }
+
+/* 素材库：缩略图跟着窗口变；素材库页面和选择窗口（生图 / 生视频）用同一个大小（2026-11-15 用户：两处差别太大；Apple 的选图窗口和“照片”也是同一个网格） */
+@media (min-width: 761px) {
+  .gal-grid, .gal-grid.gal-big { grid-template-columns: repeat(auto-fill, minmax(clamp(150px, 10.5vw, 210px), 1fr)); gap: 20px 14px; }
+}
+
+/* 生图的模型按钮：一行——名字（左）· 速度（右）· ›；第二行的小字去掉（停在按钮上有说明） */
+.ig-model-btn { display: flex !important; align-items: center; gap: 10px; height: 44px; padding: 0 12px 0 14px !important; border-radius: 12px !important; background: var(--field) !important; border: 0 !important; box-shadow: none !important; text-align: left; }
+.ig-model-btn:hover { background: color-mix(in srgb, var(--field) 80%, var(--text) 8%) !important; }
+.ig-model-btn .igm-main { flex: 1 1 auto; min-width: 0; display: block; }
+.ig-model-btn .igm-main b { display: block; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ig-model-btn .igm-main .tiny { display: none !important; }
+.ig-model-btn .igm-speed { flex: none; color: var(--text-3); font-size: 12.5px; }
+.ig-model-btn .chev { flex: none; color: var(--text-3); }
+/* 提示词增强：名字和“先增强”同一行、两端对齐 */
+.ig-enh-h { display: flex !important; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.ig-enh-h > .label { margin: 0 !important; }
+.ig-enh-h #ig-enh-go { background: transparent; color: var(--text-2); padding: 4px 8px; height: auto; }
+.ig-enh-h #ig-enh-go:hover { background: var(--hover); color: var(--text); }
+/* 每一块的名字和下面的控件统一间距 */
+.b5-sc .field > .label, .b5-sc .ig-enh-h { margin-bottom: 8px; }
+/* 开关被重画后补的滑动（见 shell.js） */
+@keyframes swKnobOn { from { transform: translateX(0); } to { transform: translateX(16px); } }
+@keyframes swKnobOff { from { transform: translateX(16px); } to { transform: translateX(0); } }
+@keyframes swTrackOn { from { background-color: rgba(127, 127, 127, .26); } }
+@keyframes swTrackOff { from { background-color: var(--ink); } }
+.switch span.sw-on { animation: swTrackOn .25s ease; } .switch span.sw-on::after { animation: swKnobOn .32s cubic-bezier(.3, 1.4, .5, 1); }
+.switch span.sw-off { animation: swTrackOff .25s ease; } .switch span.sw-off::after { animation: swKnobOff .32s cubic-bezier(.3, 1.4, .5, 1); }
+/* 音频的上传框（换声、语音转文字、改录音、音色库）：矮一点、字少；点一下选来源 */
+.drop.b5-drop, html[data-theme="dark"] .drop.b5-drop { min-height: 132px !important; padding: 20px !important; border: 1.5px dashed var(--line-2) !important; border-radius: 16px; background: var(--field) !important;
+  display: flex !important; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--text-2); font-size: 14px; }
+.drop.b5-drop:hover, .drop.b5-drop.over { border-color: var(--text-3) !important; color: var(--text); }
+.drop.b5-drop svg { width: 22px; height: 22px; }
+.drop.b5-drop:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+/* 缩略图位置图标：一列在左边 */
+.gal-lay[data-l="col"] .gl-p { x: 3.5px; y: 4.5px; width: 6.5px; height: 15px; }
+@media (hover: hover) { .gal-lay[data-l="row"]:hover .gl-p { x: 3.5px; y: 4.5px; width: 6.5px; height: 15px; } .gal-lay[data-l="col"]:hover .gl-p { x: 3.5px; y: 13.5px; width: 17px; height: 6px; } }
+@media (min-width: 1200px) {
+  .ig-grid.b5-on .ig-gal-card.port:has(> .vd-stage:not(:empty), > .ig-stage:not(:empty)) > .row.between:first-child { grid-column: 2 !important; grid-row: 1; }
+  .ig-grid.b5-on .ig-gal-card.port:has(> .vd-stage:not(:empty), > .ig-stage:not(:empty)) > #vd-live, .ig-grid.b5-on .ig-gal-card.port:has(> .vd-stage:not(:empty), > .ig-stage:not(:empty)) > #ig-live { grid-column: 2 !important; }
+  /* 缩略图在下面：一排小图（高 88），不和画面抢地方 */
+  .ig-grid.b5-on .ig-gal-card:not(.port) > .vd-stage:not(:empty) + .vd-gal { flex: none; }
+  .ig-grid.b5-on .ig-gal-card:not(.port) > .vd-stage:not(:empty) + .vd-gal .vd-tile { height: 88px !important; width: auto !important; aspect-ratio: var(--tar, .75) !important; flex: none; border-radius: 10px; }
+  .ig-grid.b5-on .ig-gal-card:not(.port) > .vd-stage:not(:empty) + .vd-gal .vd-tile :is(.vd-t-i, .vd-tile-i, .ig-ju-i, .vd-t-info, .vd-meta, figcaption) { display: none !important; }
+}
+@media (min-width: 1200px) {
+  .ig-grid.b5-on .ig-gal-card:not(.port) > .vd-stage:not(:empty) + .vd-gal { display: flex !important; flex-wrap: nowrap; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px; }
+  .ig-grid.b5-on .ig-gal-card:not(.port) > .vd-stage:not(:empty) + .vd-gal .ig-jus { display: contents !important; }
+  .ig-grid.b5-on .ig-gal-card:not(.port) > .vd-stage:not(:empty) + .vd-gal .ig-ju { flex: none; height: 92px !important; width: calc(92px * var(--ar, .75)) !important; margin: 0 !important; border-radius: 10px; }
+  .ig-grid.b5-on .ig-gal-card:not(.port) > .vd-stage:not(:empty) + .vd-gal .ig-ju-i, .ig-grid.b5-on .ig-gal-card:not(.port) > .vd-stage:not(:empty) + .vd-gal .vd-badges { display: none !important; }
+}
+@media (min-width: 1200px) { .ig-grid.b5-on .ig-gal-card:has(> .vd-stage:not(:empty), > .ig-stage:not(:empty)) .gal-lay:not([hidden]) { display: inline-grid !important; } }
+@media (min-width: 1200px) {
+  /* 输入框收起时：开着的图标开关还露在“生成”左边，一眼看得到 */
+  .ig-grid.b5-on > .ig-top-f:not(.open) > .ig-cbar > .bar-l:has(> .b5-ict.on:not([hidden])) { display: flex !important; flex: none; }
+  .ig-grid.b5-on > .ig-top-f:not(.open) > .ig-cbar > .bar-l > :not(.b5-ict.on) { display: none !important; }
+  .ig-grid.b5-on > .ig-top-f:not(.open) > .ig-cbar:has(> .bar-l > .b5-ict.on:not([hidden])) { display: flex !important; }
+  .ig-grid.b5-on > .ig-top-f:not(.open) > .ig-cbar > :not(.bar-r):not(.bar-l) { display: none !important; }
+}
+.main[data-page="play"] > *, .main[data-page="prompt"] > *, .main[data-page="img"] > *, .main[data-page="video"] > * { width: 100%; box-sizing: border-box; }
+/* 对比：左右两边的名字只在鼠标停在画面上时出现（标题栏已经写了“对比”）；没有原视频的那半边不另画一个框 */
+@media (hover: hover) { .ig-grid.b5-on .ab-tag { opacity: 0; transition: opacity .15s; } .ig-grid.b5-on .ab-stage:hover .ab-tag { opacity: 1; } }
+.ig-grid.b5-on .vd-ab-empty, .ig-grid.b5-on .vd-dual-src .ig-src.empty, .ig-grid.b5-on .ab-pane.empty { background: transparent !important; border: 1.5px dashed var(--line) !important; }
+.ig-grid.b5-on .ab-stage, .ig-grid.b5-on .vd-dual > * { background: transparent !important; }
+.vd-plab > span:first-child:not([class]) { display: none; }  /* “提示词”三个字：输入框本身就说明了 */
+
+/* ===== 第 3 轮（2026-11-07 用户截图）===== */
+.ig-cbar .b5-ict svg { flex: none; }
+@media (min-width: 1200px) {
+  /* 缩略图在左边：视频多、排成好几行时也是一列（每格都铺满这一列的宽度，不叠在一起）；这一列宽一点 */
+  .ig-grid.b5-on .ig-gal-card.port:has(> .vd-stage:not(:empty), > .ig-stage:not(:empty)) { grid-template-columns: 104px minmax(0, 1fr) !important; }
+  .ig-grid.b5-on .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal :is(.ig-jus, .ig-row) { display: contents !important; }
+  .ig-grid.b5-on .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal .ig-ju { position: relative; width: 100% !important; height: auto !important; aspect-ratio: 3 / 4; margin: 0 !important; flex: none; border-radius: 10px; overflow: hidden; }
+  .ig-grid.b5-on .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal .ig-ju > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .ig-grid.b5-on .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal :is(.ig-ju-i, .vd-ju-p, .vd-del) { display: none !important; }
+  .ig-grid.b5-on .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal .vd-badges { transform: scale(.85); transform-origin: top left; }
+  /* 关掉画面的 ×：标题栏右边的“全部视频”就是回到全部视频 */
+  .ig-grid.b5-on .ig-stage-x.vd-x { display: none !important; }
+  /* 缩略图排法 / 收起两个按钮：放在标题栏右边那排图标里（不再单独占一行） */
+  .b5-acts .gal-lay { display: none !important; }
+  .main:has(.ig-gal-card > .vd-stage:not(:empty), .ig-gal-card > .ig-stage:not(:empty)) .b5-acts .gal-lay:not([hidden]) { display: inline-grid !important; }
+  .b5-acts .gal-lay { width: 36px; height: 36px; border-radius: 10px; place-items: center; background: var(--card); color: var(--text-3); }
+  .b5-acts .gal-lay:hover { background: var(--field); color: var(--text); }
+}
+/* 防窥：只有鼠标真正停在视频画面上才显示（以前停在画面周围的空白处也会打开） */
+body.guard .ig-grid.b5-on .vd-stage:hover video { filter: brightness(0) !important; transition-delay: 0s !important; }
+body.guard .ig-grid.b5-on .vd-stage video:hover { filter: none !important; transition-delay: .9s !important; }
+body.guard .ig-grid.b5-on .vd-stage:hover::after { opacity: .45 !important; transition-delay: 0s !important; }  /* 停在画面旁边时图标不变亮（2026-11-07 用户：图标变来变去） */
+body.guard .ig-grid.b5-on .vd-stage:has(video:hover)::after { opacity: 0 !important; transition-delay: .9s !important; }
+@media (min-width: 1200px) { .ig-grid.b5-on .ig-gal-card > .row.between:first-child:not(:has(button:not([hidden]), .vd-jp:not([hidden]), .seg:not([hidden]))) { display: none !important; } }
+/* 导航栏（第 3 轮）：分类在中间偏上；展开键在 logo 下面；底部 显卡 · 私密空间 · 设置，播放器圆钮小一点 */
+@media (min-width: 761px) {
+  .rail .brand { margin-bottom: 4px; }
+  .rail-top { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .rail-top .rbtn, .rail-top .cp-open { width: 36px; height: 36px; }
+  .rnav { flex: 1 1 auto; justify-content: center; margin-top: 0 !important; padding-bottom: 8vh; }
+  .rail-foot { margin-top: 0; gap: 4px; }
+  .rail-row { display: contents; }
+  .rail-foot > .rail-row > .side-dock, .rail-foot .side-dock { order: 1; }
+  .rail-foot > .vault-chip { order: 2; }
+  .rail-foot #side-gear { order: 3; margin-bottom: 4px; }
+  .rail .vault-chip:not([hidden]) { width: 40px; height: 32px; }
+  #pb-fab, #pb-fab[hidden] { width: 36px !important; height: 36px !important; left: calc(var(--rail-w) / 2 - 18px) !important; }
+  #pb-fab .pb-fab-art { width: 28px; height: 28px; } #pb-fab .pb-fab-art .art { --s: 28px !important; }
+  #pb-fab .pb-fab-art:empty::before { font-size: 14px; }
+  #pb-fab:not([hidden]) { outline: 1.5px solid var(--line-2); outline-offset: 1px; }
+  html.rail-wide .rail-top { position: absolute; top: 18px; right: 12px; flex-direction: row; }
+  html.rail-wide .rnav { justify-content: flex-start; padding-bottom: 0; margin-top: 16px !important; }
+  html.rail-wide .rail-foot { flex-direction: row; flex-wrap: wrap; align-items: center; }
+  html.rail-wide .rail-foot > .vault-chip:not([hidden]) { order: 0; flex: 1 0 100%; }
+  html.rail-wide .rail-foot #side-gear { order: 1; margin: 0; }
+  html.rail-wide .rail-foot .side-dock { order: 2; }
+  html.rail-wide #pb-fab, html.rail-wide #pb-fab[hidden] { left: 20px !important; }
+}
+@media (min-width: 761px) {
+  .rail .rail-foot > .vault-chip:not([hidden]) { order: 2; }
+  /* 收起的导航栏里：私密空间这一块就是“退出”按钮（锁的图标，停上去提示“退出私密空间”） */
+  html:not(.rail-wide) .rail .vault-chip:not([hidden]) > svg { display: none; }
+  html:not(.rail-wide) .rail .vault-chip:not([hidden]) #vault-exit { display: grid !important; place-items: center; width: 100%; height: 100%; border-radius: 10px; cursor: pointer; color: #9d8fff; }
+  html:not(.rail-wide) .rail .vault-chip:not([hidden]) #vault-exit:hover { background: rgba(124, 92, 255, .2); }
+  html:not(.rail-wide) .rail .vault-chip:not([hidden]) #vault-exit svg { width: 16px; height: 16px; }
+}
+
+/* ===== 第 4 轮（2026-11-07）===== */
+/* 内容和导航栏、窗口右边都留出空（以前贴着导航栏、顶着右边） */
+@media (min-width: 761px) {
+  .main { padding: 0 clamp(32px, 4vw, 88px) 28px clamp(32px, 4vw, 88px) !important; }  /* 2026-11-07 用户：内容不要贴着导航栏、屏幕不要被塞满（以前 20–40px） */
+  html.rail-wide .main { padding-left: clamp(32px, 3.4vw, 72px) !important; }
+  body.in-app:not(.compact):not(.app-fs) .main { padding-top: 34px !important; }  /* 应用窗口：顶上 34px 是拖动窗口那一条（.tb-strip），标题让到它下面 */
+}
+/* 空的时候（还没生成过）：提示放在视觉中心（略高于正中） */
+@media (min-width: 1200px) {
+  .ig-grid.b5-on .ig-gal-card:has(> .vd-gal > .ig-empty:only-child, > .ig-gal > .ig-empty:only-child) { display: flex; flex-direction: column; }
+  .ig-grid.b5-on .ig-gal-card > :is(.vd-gal, .ig-gal):has(> .ig-empty:only-child) { flex: 1; display: flex !important; align-items: center; justify-content: center; padding-bottom: 8vh; }
+  .ig-grid.b5-on .ig-empty { padding: 0; color: var(--text-3); }
+  .ig-grid.b5-on .ig-empty b { font-weight: 500; }
+}
+/* 防窥：作品列表的缩略图也先黑着 */
+body.guard .w-th { position: relative; }
+body.guard .w-th img { filter: brightness(0); transition: filter .2s; }
+body.guard .work:hover .w-th img { filter: none; transition-delay: .9s; }
+/* 作品：一条条太长——宽屏排成两三列的小卡片，缩略图大一点，标签和“播放”都轻一点 */
+#wlist.works { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 400px), 1fr)); gap: 10px; }
+#wlist .work { grid-template-columns: 56px minmax(0, 1fr) auto; gap: 14px; padding: 12px 14px; border-radius: 14px; background: var(--card); cursor: pointer; transition: background-color .15s; }
+#wlist .work:hover { background: color-mix(in srgb, var(--card) 80%, var(--text) 6%); }
+#wlist .work .w-th { width: 56px; height: 56px; border-radius: 10px; overflow: hidden; display: block; }
+#wlist .work .w-th img { width: 100%; height: 100%; object-fit: cover; }
+#wlist .work .tt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px; }
+#wlist .work .tiny { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-3); margin-top: 2px; }
+#wlist .work .w-kt { background: var(--hover) !important; color: var(--text-3) !important; font-weight: 500; }
+#wlist .work .row .btn.small { background: transparent; color: var(--text-2); }
+#wlist .work:hover .row .btn.small { background: var(--field); color: var(--text); }
+/* 输入框外面右边那一列图标：没有底色、颜色淡；开着的是浅底 + 亮一点的图标（不再是一块白） */
+.b5-tools { display: none; }
+@media (min-width: 1200px) {
+  .ig-grid.b5-on > .b5-tools:not([hidden]) { position: absolute; z-index: 31; display: flex; flex-direction: column-reverse; gap: 4px; }
+  .ig-grid.b5-on > .b5-tools.row:not([hidden]) { flex-direction: row; gap: 2px; }
+  .b5-tools > * { top: 0 !important; left: 0 !important; right: auto !important; bottom: auto !important; }
+  .b5-tools > * { width: 36px !important; height: 36px !important; padding: 0 !important; border-radius: 10px !important; display: inline-flex !important; align-items: center; justify-content: center; position: relative !important;
+    background: transparent !important; color: var(--text-3) !important; box-shadow: none !important; margin: 0 !important; }
+  .b5-tools > [hidden] { display: none !important; }
+  .b5-tools > :hover { background: var(--hover) !important; color: var(--text) !important; }
+  .b5-tools > .on { background: var(--field) !important; color: var(--text) !important; box-shadow: inset 0 0 0 1px var(--line-2) !important; }
+  .b5-tools svg { width: 18px !important; height: 18px !important; }
+  .b5-tools #vd-adv-open > span:not(.ig-adv-n), .b5-tools #ig-adv-open > span:not(.ig-adv-n) { display: none; }
+  .b5-tools .ig-adv-n:not(:empty) { position: absolute; top: 1px; right: 1px; min-width: 15px; height: 15px; padding: 0 4px; font-size: 10px; line-height: 15px; border-radius: 8px; background: var(--ink); color: var(--on-ink); }
+  /* 框里只剩一行：模型 / 参数（收起选项栏时）、AI 优化、写法、本次设置、生成——本次设置和“生成”上下居中，放不下时换成两行也居中 */
+  .ig-grid.b5-on > .ig-top-f.open > .ig-cbar { align-items: center !important; }
+  .ig-grid.b5-on > .ig-top-f.open > .ig-cbar > .bar-l { flex-wrap: nowrap !important; overflow: hidden; }
+  .ig-grid.b5-on > .ig-top-f.open > .ig-cbar > .vd-sum { align-self: center; max-width: 34%; }
+  .ig-grid.b5-on > .ig-top-f.open > .ig-cbar > .vd-sum .vd-sum-t { white-space: normal !important; display: -webkit-box !important; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 1.4; text-align: right; overflow: hidden; }
+  .ig-grid.b5-on.b5-pc > .ig-top-f.open .ig-chip { max-width: 240px; }
+  .ig-grid.b5-on.b5-pc > .ig-top-f.open .ig-chip > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+@media (min-width: 1200px) { .ig-grid.b5-on > .b5-tools > .on, .ig-grid.b5-on > .b5-tools > .b5-ict.on { background: var(--field) !important; color: var(--text) !important; box-shadow: inset 0 0 0 1px var(--line-2) !important; } }
+/* 展开的导航栏：列表整体在视觉中心偏上（不再挤在左上角，下面空一大块） */
+@media (min-width: 761px) { html.rail-wide .rail { padding-left: 16px; padding-right: 16px; } }
+/* 展开的导航栏（2026-11-07 用户：放上面一点，散开一些）：从 logo 下面开始排，每项、每组之间的空随窗口高度变大 */
+@media (min-width: 761px) {
+  html.rail-wide .rnav { justify-content: flex-start !important; padding-bottom: 0 !important; margin-top: clamp(14px, 4.5vh, 48px) !important; }
+  html.rail-wide .cat > a.cat-b { padding-top: clamp(6px, 1.05vh, 11px) !important; padding-bottom: clamp(6px, 1.05vh, 11px) !important; font-size: 14px; }
+  html.rail-wide .cat + .cat { margin-top: clamp(8px, 2.6vh, 26px) !important; }
+}
+@media (min-width: 1200px) { .ig-grid.b5-on #vd-stage > video.vd-player { height: min(100%, 68vh) !important; } }
+@media (max-width: 760px) {
+  #wlist .work { grid-template-columns: 52px minmax(0, 1fr) auto !important; gap: 12px; padding: 10px 12px; }
+  #wlist .work .w-th { width: 52px; height: 52px; }
+  #wlist .work > .row { grid-column: auto !important; margin: 0 !important; }
+  #wlist .work > .row .btn.small { padding: 6px 10px; }
+}
+#w-tabs[aria-hidden="true"] { display: none !important; }  /* 用不上时（不是配音那一类）不占一行 */
+@media (hover: hover) and (pointer: fine) { #vault-cover:not(.on) { opacity: 0; visibility: hidden; will-change: auto; } }  /* 电脑上不需要预先铺好的黑层（那是给 iPhone 后台切换用的），它在画面中间留下一块淡淡的方块 */
+/* 窄窗口 / 手机：输入框下面那排按钮一行放下（放不下就左右滑），不再折成两行 */
+@media (max-width: 1199px) {
+  .ig-top-f > .ig-cbar > .bar-l { flex-wrap: nowrap !important; overflow-x: auto; scrollbar-width: none; min-width: 0; -webkit-mask: linear-gradient(90deg, #000 calc(100% - 18px), transparent); mask: linear-gradient(90deg, #000 calc(100% - 18px), transparent); }
+  .ig-top-f > .ig-cbar > .bar-l::-webkit-scrollbar { display: none; }
+  .ig-top-f > .ig-cbar > .bar-l > *, .ig-top-f > .ig-cbar > .bar-l .ig-chips > * { flex: none; }
+  .ig-top-f > .ig-cbar > .bar-l .ig-chips { flex-wrap: nowrap !important; }
+}
+@media (max-width: 1199px) {
+  .ig-top-f > .ig-cbar > .bar-l { display: flex !important; flex: 1 1 100%; align-items: center; gap: 6px; }
+  .ig-top-f > .ig-cbar > .bar-l .ig-chips { display: flex !important; gap: 6px; }
+  .ig-top-f > .ig-cbar > .bar-r { display: flex !important; flex: 1 1 100%; }
+  .ig-top-f > .ig-cbar > .bar-r > .ig-gen { flex: 1; justify-content: center; }
+}
+@media (min-width: 761px) and (max-width: 1199px) {
+  .ig-top-f > .ig-cbar > .bar-l { flex: 1 1 auto; }
+  .ig-top-f > .ig-cbar > .bar-r { flex: none; }
+  .ig-top-f > .ig-cbar > .bar-r > .ig-gen { flex: none; padding: 0 22px; }
+}
+/* 空的结果区（配音、换声）：提示放在这块的视觉中心，不贴在顶上，也不再套一个框 */
+@media (min-width: 761px) {
+  :is(div, section):has(> .rec-empty:only-child) { display: flex; align-items: center; justify-content: center; min-height: 240px; height: 100%; border: 0 !important; background: transparent !important; }
+  .rec-empty { color: var(--text-3); padding-bottom: 8vh; }
+}
+@media (min-width: 761px) {
+  .card:has(.rec-empty:only-child) { display: flex; flex-direction: column; }
+  .card:has(.rec-empty:only-child) :has(> .rec-empty:only-child), .card:has(.rec-empty:only-child) :has(.rec-empty:only-child) { flex: 1 1 auto; }
+}
+@media (min-width: 761px) { .side-col:has(.rec-empty:only-child) { display: flex; flex-direction: column; } .side-col:has(.rec-empty:only-child) > .tts-pane, .side-col:has(.rec-empty:only-child) .rec-card { flex: 1 1 auto; display: flex; flex-direction: column; } .side-col .rec-card:has(.rec-empty:only-child) { background: transparent !important; } }
+@media (min-width: 761px) { .side-col:has(.rec-empty:only-child) > .tts-pane { display: flex !important; flex-direction: column; } }
+@media (min-width: 761px) { html body .grid-tts .side-col:has(.rec-empty:only-child) > .tts-pane:not([hidden]) { display: flex !important; flex-direction: column; } html body .grid-tts .side-col:has(.rec-empty:only-child) .rec-card { flex: 1 1 auto; } }
+@media (min-width: 761px) { .main[data-page="tts"] .side-col:has(.rec-empty:only-child) > #tts-rec { display: flex !important; flex-direction: column; } }
+@media (min-width: 1200px) {
+  .ig-grid.b5-on .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal { display: flex !important; flex-direction: column; gap: 10px !important; }
+  .ig-grid.b5-on .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal :is(.ig-ju, .vd-tile) { flex: none !important; }
+}
+/* 作品页：分类下面空着的那一行（chips 没内容时）不占位 */
+.main[data-page="works"] > .chips:empty { display: none; }
+/* 手机生图：标题已是“全部图片”，旁边同名的按钮多余 */
+@media (max-width: 1199px) { .ig-gal-card #ig-all.on, .ig-gal-card .ig-allb.on { display: none !important; } }
+body.tip-hold .tip-float { opacity: 0 !important; }
+
+/* ---------------- 2026-11-07 手机 AI 助手（参考 ChatGPT iOS）+ 液态玻璃 ----------------
+   苹果 HIG：Liquid Glass 只用在“控件 / 导航”这一层（浮在内容上面的按钮、输入框、标签栏），内容层不用；用得少才显得高级。
+   .lg = 玻璃：半透明 + 背景模糊提亮 + 顶边一道高光 + 细描边 + 柔和投影；系统“减少透明度”时变成实色 */
+:root { --lg-bg: rgba(255, 255, 255, .62); --lg-hi: rgba(255, 255, 255, .85); --lg-edge: rgba(0, 0, 0, .06); --lg-sh: 0 6px 22px rgba(0, 0, 0, .10); }
+html[data-theme="dark"] { --lg-bg: rgba(44, 44, 48, .52); --lg-hi: rgba(255, 255, 255, .16); --lg-edge: rgba(255, 255, 255, .09); --lg-sh: 0 8px 26px rgba(0, 0, 0, .42); }
+.pg-m { display: none !important; }
+.pg-cap { display: contents; }
+.pg-scrim { display: none; }
+@media (max-width: 760px) {
+  .lg { background: var(--lg-bg) !important; -webkit-backdrop-filter: blur(22px) saturate(180%); backdrop-filter: blur(22px) saturate(180%);
+    box-shadow: inset 0 1px 0 var(--lg-hi), inset 0 0 0 .5px var(--lg-edge), var(--lg-sh) !important; border: 0 !important; }
+  @media (prefers-reduced-transparency: reduce) { .lg { background: var(--pop) !important; -webkit-backdrop-filter: none; backdrop-filter: none; } }
+  /* 标签栏、播放小圆钮也带一点玻璃高光（不改大小和位置） */
+  .rail { box-shadow: inset 0 .5px 0 var(--lg-hi); border-top-color: transparent !important; }
+
+  /* 页面：不要“AI 助手”标题；整页就是一个对话，输入框贴在标签栏上面 */
+  .main[data-page="prompt"], body.pb-min .main[data-page="prompt"] { padding-top: 0 !important; padding-bottom: calc(66px + env(safe-area-inset-bottom)) !important; }
+  .main[data-page="prompt"] > .page-head { display: none !important; }
+  .main[data-page="prompt"] .pg-grid { display: block !important; height: auto !important; }
+  .main[data-page="prompt"] .pg-side-col { display: none !important; }
+  .main[data-page="prompt"] .pg-card { position: relative; display: flex; flex-direction: column; height: calc(100dvh - 66px - env(safe-area-inset-bottom)) !important; min-height: 0;
+    background: transparent !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; border-radius: 0 !important; }
+  body:has(.main[data-page="prompt"]) #pb-fab { display: none !important; }  /* 小圆钮会压住发送按钮：这一页先不显示（播放照常） */
+  /* 顶栏浮在对话上面：左 历史、中 分类 · 预设、右 参数 / 新对话；下面的内容滚上去时从玻璃底下透过来 */
+  .main[data-page="prompt"] .pg-top:not([hidden]) { position: absolute; z-index: 20; top: 0; left: 0; right: 0; display: grid !important; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 10px;
+    margin: 0 !important; padding: calc(env(safe-area-inset-top) + 10px) 0 14px !important; pointer-events: none;
+    background: none; }
+  .main[data-page="prompt"] .pg-top > * { pointer-events: auto; }
+  .main[data-page="prompt"] .pg-top > #pg-edit, .main[data-page="prompt"] .pg-top > #pg-new, .main[data-page="prompt"] .pg-top > .spacer { display: none !important; }
+  .pg-mb { all: unset; box-sizing: border-box; width: 44px; height: 44px; border-radius: 50%; display: grid !important; place-items: center; color: var(--text); cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform .2s cubic-bezier(.3, 1.4, .5, 1); }
+  .pg-mb:active { transform: scale(.9); }
+  .pg-mb svg { width: 21px; height: 21px; }
+  .pg-mcap { display: flex !important; border-radius: 22px; }
+  .pg-mcap .pg-mb { width: 42px; }
+  .pg-cap { display: flex; justify-self: center; min-width: 0; max-width: 100%; padding: 4px; gap: 2px; border-radius: 22px; background: var(--lg-bg); -webkit-backdrop-filter: blur(22px) saturate(180%); backdrop-filter: blur(22px) saturate(180%);
+    box-shadow: inset 0 1px 0 var(--lg-hi), inset 0 0 0 .5px var(--lg-edge), var(--lg-sh); }
+  .pg-cap .dd { height: 36px; min-width: 0; border: 0 !important; border-radius: 18px !important; background: transparent !important; box-shadow: none !important; padding: 0 8px 0 12px !important; font-size: 14px; gap: 2px; }
+  .pg-cap .dd:first-child { flex: none; background: color-mix(in srgb, var(--canvas) 80%, transparent) !important; }
+  .pg-cap .dd .dd-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pg-cap .dd .dd-c svg { width: 14px; height: 14px; opacity: .6; }
+  .main[data-page="prompt"] .pg-sys:empty { display: none; }
+  .main[data-page="prompt"] .pg-card { padding-top: calc(env(safe-area-inset-top) + 66px) !important; }
+  .main[data-page="prompt"] .pg-msgs { flex: 1 1 auto; min-height: 0; max-height: none !important; height: auto !important; overflow-y: auto; overscroll-behavior: contain;
+    padding: 8px 2px 14px !important; -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 16px); mask-image: linear-gradient(to bottom, transparent 0, #000 16px); }
+  .main[data-page="prompt"] .pg-empty { display: none; }
+  .main[data-page="prompt"] .pg-in { flex: none; border: 0 !important; padding: 4px 0 0 !important; margin: 0 !important; }
+  .main[data-page="prompt"] .pg-composer { border-radius: 26px !important; padding: 6px 6px 6px 4px !important; align-items: center; background: var(--lg-bg) !important; -webkit-backdrop-filter: blur(22px) saturate(180%); backdrop-filter: blur(22px) saturate(180%);
+    box-shadow: inset 0 1px 0 var(--lg-hi), inset 0 0 0 .5px var(--lg-edge), var(--lg-sh) !important; border: 0 !important; }
+  .main[data-page="prompt"] .pg-in-row > .pg-peek { width: 44px; height: 44px; margin-bottom: 5px; background: var(--lg-bg); -webkit-backdrop-filter: blur(22px) saturate(180%); backdrop-filter: blur(22px) saturate(180%);
+    box-shadow: inset 0 1px 0 var(--lg-hi), inset 0 0 0 .5px var(--lg-edge), var(--lg-sh); }  /* 和输入框同一层玻璃 */
+  .main[data-page="prompt"] .pg-note:empty { display: none; }
+
+  /* 历史抽屉：从左边滑出，整页（含标签栏）往右推开、变成圆角卡片；点右边露出来的那块或往左划就关上 */
+  body > #pg-hist { display: block !important; position: fixed; z-index: 90; top: 0; bottom: 0; left: 0; width: min(76vw, 330px); height: 100dvh !important; max-height: none !important; margin: 0; overflow-y: auto; overscroll-behavior: contain;
+    padding: calc(env(safe-area-inset-top) + 14px) 14px calc(env(safe-area-inset-bottom) + 20px) !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; background: #000 !important;
+    transform: translateX(-38%); opacity: 0; visibility: hidden; transition: transform .38s cubic-bezier(.32, .72, 0, 1), opacity .26s, visibility 0s .38s; }
+  html[data-theme="light"] body > #pg-hist { background: #fff !important; }
+  body.pg-hist-open > #pg-hist { transform: none; opacity: 1; visibility: visible; transition: transform .38s cubic-bezier(.32, .72, 0, 1), opacity .2s, visibility 0s; }
+  body:has(> #pg-hist) #main, body:has(> #pg-hist) .rail { transition: transform .38s cubic-bezier(.32, .72, 0, 1), border-radius .38s; }
+  body.pg-hist-open:has(> #pg-hist) #main { transform: translateX(min(76vw, 330px)); border-radius: 34px; overflow: hidden; background: var(--canvas); box-shadow: 0 0 0 .5px var(--lg-edge); }
+  body.pg-hist-open:has(> #pg-hist) .rail { transform: translateX(min(76vw, 330px)); border-bottom-left-radius: 34px; }
+  html:has(body.pg-hist-open > #pg-hist) { overflow: hidden; }
+  body.pg-hist-open:has(> #pg-hist) { overflow: hidden; background: #000; }
+  html[data-theme="light"] body.pg-hist-open:has(> #pg-hist) { background: #fff; }
+  body.pg-hist-open .pg-scrim { display: block; position: fixed; inset: 0; z-index: 100; background: rgba(0, 0, 0, .18); }
+  .pg-dw-q-w { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px; border-radius: 22px; color: var(--text-3); }
+  .pg-dw-q-w svg { width: 18px; height: 18px; flex: none; }
+  .pg-dw-q { all: unset; flex: 1; min-width: 0; font-size: 16px; color: var(--text); }
+  .pg-dw-q::placeholder { color: var(--text-3); }
+  .pg-dw-menu { display: grid; gap: 2px; margin: 14px 0 8px; }
+  .pg-dw-menu button { all: unset; display: flex; align-items: center; gap: 14px; height: 46px; padding: 0 8px; border-radius: 12px; font-size: 16px; color: var(--text); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .pg-dw-menu button:active { background: var(--hover); }
+  .pg-dw-menu svg { width: 22px; height: 22px; flex: none; }
+  .pg-dw-s { margin: 18px 8px 6px; font-size: 15px; font-weight: 600; color: var(--text); }
+  body > #pg-hist .pg-hist-l { display: grid; gap: 0; }
+  body > #pg-hist .pg-hi { display: flex !important; align-items: center; gap: 8px; min-height: 46px; padding: 0 8px !important; border-radius: 12px; background: none !important; }
+  body > #pg-hist .pg-hi.on { background: var(--field) !important; }
+  body > #pg-hist .pg-hi[hidden] { display: none !important; }
+  body > #pg-hist .pg-hi-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 16px; color: var(--text); }
+  body > #pg-hist .pg-hi .tiny { flex: none; color: var(--text-3); }
+  body > #pg-hist .pg-hi-x { flex: none; width: 30px; height: 30px; opacity: .55; }
+  body > #pg-hist .pg-hist-e { padding: 6px 8px; }
+  .pg-side-mdl { margin-top: 3px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+@media (max-width: 760px) and (prefers-reduced-motion: reduce) { body > #pg-hist, body:has(> #pg-hist) #main, body:has(> #pg-hist) .rail { transition: none !important; } }
+
+/* ---------------- 2026-11-07 手机：顶部实色条、键盘、悬浮玻璃标签栏、记录抽屉 ---------------- */
+#sb-strip, .m-dw, .m-dw-scrim { display: none; }
+@media (max-width: 760px) { .m-dw { display: block; } }
+@media (max-width: 760px) {
+  :root { --tab-b: max(6px, calc(env(safe-area-inset-bottom) - 16px)); }
+  /* iOS 26 主屏幕 App：最上面有一条整宽实色固定条时不会糊页面（没有刘海的设备高度是 0，看不到） */
+  #sb-strip { display: block; position: fixed; z-index: 39; top: 0; left: 0; right: 0; height: env(safe-area-inset-top); background: var(--canvas); }
+  /* 标签栏：浮起来的玻璃胶囊（iOS 26），当前那一项底下一块浅色 */
+  .rail, html.rail-wide .rail { left: 12px !important; right: 12px !important; bottom: var(--tab-b) !important; padding: 4px !important; border-radius: 30px !important; border: 0 !important;
+    background: var(--lg-bg) !important; -webkit-backdrop-filter: blur(22px) saturate(180%) !important; backdrop-filter: blur(22px) saturate(180%) !important;
+    box-shadow: inset 0 1px 0 var(--lg-hi), inset 0 0 0 .5px var(--lg-edge), var(--lg-sh) !important; }
+  .cat > .cat-b, html.rail-wide .cat > .cat-b, html.rail-wide .cat > button.cat-b { border-radius: 24px !important; transition: background-color .2s, color .2s; }
+  .cat.on > .cat-b { background: color-mix(in srgb, var(--text) 10%, transparent) !important; }
+  #side-gear { border-radius: 24px !important; }
+  #pb-fab { background: var(--lg-bg) !important; -webkit-backdrop-filter: blur(22px) saturate(180%); backdrop-filter: blur(22px) saturate(180%); box-shadow: inset 0 1px 0 var(--lg-hi), inset 0 0 0 .5px var(--lg-edge), var(--lg-sh) !important; border: 0 !important; }
+  /* 弹出的菜单 / 分类面板 / 下拉：玻璃（HIG：sheet、popover 属于控件层） */
+  .fly, html.rail-wide .fly, .dd-menu, .ctx-menu, .pop { background: color-mix(in srgb, var(--pop) 78%, transparent) !important; -webkit-backdrop-filter: blur(26px) saturate(180%); backdrop-filter: blur(26px) saturate(180%);
+    box-shadow: inset 0 1px 0 var(--lg-hi), inset 0 0 0 .5px var(--lg-edge), 0 18px 50px rgba(0, 0, 0, .35) !important; }
+  .fly, html.rail-wide .fly { bottom: calc(var(--tab-b) + 66px) !important; border-radius: 24px !important; }
+  /* 打字时：标签栏、播放小圆钮、播放条先收起来，不被键盘顶上去 */
+  html.kb-open .rail, html.kb-open #pb-fab, html.kb-open .pbar { display: none !important; }
+  body:has(#rail .cat.open) #pb-fab { opacity: 0; pointer-events: none; }  /* 分类面板打开时小圆钮别压在面板上 */
+  html.kb-open .main[data-page="prompt"] { padding-bottom: 8px !important; }
+  html.kb-open .main[data-page="prompt"] .pg-card { height: calc(var(--vvh, 100dvh) - 8px) !important; }
+  @media (prefers-reduced-transparency: reduce) { .rail, #pb-fab, .fly, .dd-menu, .ctx-menu, .pop { background: var(--pop) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; } }
+
+  /* 记录抽屉（换声 / 语音转文字 / 改录音）：和 AI 助手的历史一样从左边滑出、把页面推开 */
+  .m-dw { position: fixed; z-index: 90; top: 0; bottom: 0; left: 0; width: min(80vw, 340px); height: 100dvh; overflow-y: auto; overscroll-behavior: contain; box-sizing: border-box;
+    padding: calc(env(safe-area-inset-top) + 12px) 10px calc(env(safe-area-inset-bottom) + 20px); background: #000;
+    transform: translateX(-38%); opacity: 0; visibility: hidden; transition: transform .38s cubic-bezier(.32, .72, 0, 1), opacity .26s, visibility 0s .38s; }
+  html[data-theme="light"] .m-dw { background: #fff; }
+  body.mdw-open .m-dw { transform: none; opacity: 1; visibility: visible; transition: transform .38s cubic-bezier(.32, .72, 0, 1), opacity .2s, visibility 0s; }
+  .m-dw > .card { background: transparent !important; border: 0 !important; box-shadow: none !important; padding: 0 4px !important; margin: 0 !important; }
+  .m-dw .card-title { font-size: 20px; }
+  body.mdw-on #main, body.mdw-on .rail { transition: transform .38s cubic-bezier(.32, .72, 0, 1), border-radius .38s; }
+  body.mdw-open #main { transform: translateX(min(80vw, 340px)); border-radius: 34px; overflow: hidden; background: var(--canvas); box-shadow: 0 0 0 .5px var(--lg-edge); }
+  body.mdw-open .rail { transform: translateX(min(80vw, 340px)); }
+  body.mdw-open, html:has(body.mdw-open) { overflow: hidden; }
+  body.mdw-open { background: #000; } html[data-theme="light"] body.mdw-open { background: #fff; }
+  .m-dw-scrim { display: none; }
+  body.mdw-open .m-dw-scrim { display: block; position: fixed; z-index: 95; top: 0; bottom: 0; right: 0; left: min(80vw, 340px); background: rgba(0, 0, 0, .18); }
+  .m-dw-b { all: unset; box-sizing: border-box; position: relative; flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: var(--text); cursor: pointer; margin-right: 10px; -webkit-tap-highlight-color: transparent; transition: transform .2s cubic-bezier(.3, 1.4, .5, 1); }
+  .m-dw-b:active { transform: scale(.9); }
+  .m-dw-b svg { width: 20px; height: 20px; }
+  .m-dw-n { position: absolute; top: -3px; right: -4px; min-width: 17px; height: 17px; padding: 0 4px; box-sizing: border-box; border-radius: 9px; background: var(--ink); color: var(--on-ink); font-size: 10.5px; line-height: 17px; text-align: center; font-weight: 600; }
+  .m-dw-n:empty { display: none; }
+  body.mdw-on #main > .page-head { justify-content: flex-start; align-items: center; }
+  body.mdw-on #main > .page-head > .row, body.mdw-on #main > .page-head > .b5-acts { margin-left: auto; }
+}
+@media (max-width: 760px) and (prefers-reduced-motion: reduce) { .m-dw, body.mdw-on #main, body.mdw-on .rail { transition: none !important; } }
+
+/* 生图 / 生视频（宽窗口）：输入框的中心 = 窗口中心（--b5cx / --b5cw 由 igB5 的 fitC 算好） */
+@media (min-width: 1200px) {
+  .ig-grid.b5-on > .ig-top-f { left: var(--b5cx, 50%); width: min(560px, var(--b5cw, calc(100% - 40px))); }
+  .ig-grid.b5-on > .ig-top-f.open { width: min(860px, var(--b5cw, calc(100% - 40px))); }
+}
+/* AI 助手：还没有消息时（只有中间的预设名）不要顶部渐隐，不然名字上半截像糊了 */
+.pg-card.is-empty .pg-msgs, .pg-msgs:has(> .pg-empty) { -webkit-mask-image: none !important; mask-image: none !important; }
+/* 生图 / 生视频（宽窗口）：结果区高度已经算好到窗口底边，main 底部只留 12px（以前 28px，整页白白多滚十几像素） */
+@media (min-width: 761px) { .main:has(> .ig-grid.b5-on), .main:has(> .ig-grid.b5-side) { padding-bottom: 12px !important; } }
+#vd-stage:empty { display: none !important; }  /* 成品 / 对比还没有结果：不占位置 */
+.ig-gal-card:has(> #vd-stage:not(:empty)) .ig-empty { display: none !important; }  /* 对比里已经有“尚未生成视频”：下面不再重复一句 */
+
+/* 2026-11-07 用户：导航栏收起 / 展开、右边选项栏开关都要有简单的拉出动画；导航栏两种状态都宽一点（76 → 88，220 → 248） */
+@property --rail-w { syntax: '<length>'; inherits: true; initial-value: 88px; }
+@media (min-width: 761px) and (prefers-reduced-motion: no-preference) {
+  html.rail-anim { transition: --rail-w .32s cubic-bezier(.32, .72, 0, 1); }
+  html.rail-anim .rail { overflow: hidden; }
+}
+
+/* 方案 A（2026-11-07 用户选）：缩略图在左边，两列大缩略图；正在播放的视频尽量在窗口正中（--b5pl / --b5pr 由 fitC 算） */
+@media (min-width: 1200px) {
+  .ig-grid.b5-on .ig-gal-card.port:has(> .vd-stage:not(:empty), > .ig-stage:not(:empty)) { grid-template-columns: clamp(220px, 16vw, 320px) minmax(0, 1fr) !important; column-gap: 28px !important; }
+  .ig-grid.b5-on .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal, .ig-grid.b5-on .ig-gal-card.port > .ig-stage:not(:empty) + .ig-gal {
+    display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 12px 10px !important; align-content: start; margin-left: 0 !important; padding: 4px 8px 4px 2px !important; }
+  .ig-grid.b5-on .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal .vd-badges { transform: none; }
+  .ig-grid.b5-on .ig-gal-card > .vd-stage:not(:empty), .ig-grid.b5-on .ig-gal-card > .ig-stage:not(:empty) { padding-left: var(--b5pl, 0px) !important; padding-right: var(--b5pr, 0px) !important; box-sizing: border-box; }  /* 不做过渡：开关右栏时画面不再先动一下再回来 */
+}
+
+/* AI 助手「参数」：横向宽弹窗，左生成参数 / 右模型设置（2026-11-07 用户：不要从右边展开） */
+.modal.wide.pg-sm { width: min(1000px, 94vw); padding: 22px 26px; }
+.pg-sm #pg-side { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 0; align-items: start; background: none; }
+.pg-sm .pg-sd-a { padding-right: 30px; }
+.pg-sm .pg-sd-b { padding-left: 30px; border-left: 1px solid var(--line-2); min-height: 100%; }
+.pg-sm .pg-sd-b > .tiny:first-of-type { margin-top: -4px; }
+@media (max-width: 760px) {
+  .pg-sm #pg-side { grid-template-columns: minmax(0, 1fr); }
+  .pg-sm .pg-sd-a { padding-right: 0; }
+  .pg-sm .pg-sd-b { padding: 16px 0 0; margin-top: 8px; border-left: 0; border-top: 1px solid var(--line-2); }
+}
+.pg-sm #pg-gpu button { white-space: nowrap; padding-left: 6px; padding-right: 6px; }
+
+/* ===== 第 6 轮（2026-11-07 用户截图） ===== */
+/* 防窥图标：大画面左右留的空（为了居中）不算在内，图标在视频正中；剪辑 / 对比里大画面本身不放图标（每个画面自己有一个） */
+body.guard .vd-stage::after { left: calc(50% + (var(--b5pl, 0px) - var(--b5pr, 0px)) / 2) !important; }
+body.guard .vd-stage:has(> .vseg-host, > .vd-ab, > .vd-dual)::after { display: none !important; }
+body.guard .ig-grid.b5-on .vd-stage :is(.vseg-v, .ab-pane):hover::after { opacity: .45; transition-delay: 0s; }
+body.guard .ig-grid.b5-on .vd-stage :is(.vseg-v, .ab-pane):has(video:hover)::after { opacity: 0; transition-delay: .9s; }
+@media (min-width: 1200px) {
+  /* 剪辑：大画面里那一块撑满宽度（以前宽度被算成 0，画面不见、按钮叠在一起） */
+  .ig-grid.b5-on #vd-stage > .vseg-host { align-self: stretch; width: 100%; }
+  /* 右栏原视频：信息那一行放在画面下面（以前浮在上面，压住换人 / 换头 / 改衣）；文字太长时省略，按钮不出框 */
+  .ig-grid.b5-on #ve-src > .ve-src-i { position: static !important; max-width: none !important; margin: 8px 0 0 !important; justify-content: flex-start !important; flex-wrap: nowrap !important; white-space: nowrap; overflow: hidden; }
+  .ig-grid.b5-on #ve-src > .ve-src-i :is(.ve-src-m, .ve-seg-txt) { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .ig-grid.b5-on #ve-src > .ve-src-i .ve-segb { margin-left: auto; flex: none; }
+  .ve-src-c > .ve-seg-txt { flex: 0 1 auto !important; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .ve-src-c > .btn { padding: 0 7px !important; }
+  .ve-src-c > .spacer { flex: 1 0 4px; }
+  /* 左边缩略图：行高按格子本身的高度（以前被压成 46px，格子叠在一起） */
+  .ig-grid.b5-on .ig-gal-card.port > :is(.vd-stage, .ig-stage):not(:empty) + :is(.vd-gal, .ig-gal) { grid-auto-rows: max-content !important; }
+  .ig-grid.b5-on .ig-gal-card.port > :is(.vd-stage, .ig-stage):not(:empty) + :is(.vd-gal, .ig-gal) :is(.vd-tile, .ig-ju) { align-self: start; }
+  /* 放不下时像一叠文件：每张只露出上面一截（JS 算 --stk），鼠标停在哪张，哪张就抽出来 */
+  .ig-grid.b5-on .ig-gal-card.port > :is(.vd-stage, .ig-stage):not(:empty) + :is(.vd-gal, .ig-gal).stk { grid-auto-rows: var(--stk) !important; row-gap: 0 !important; padding-bottom: calc(var(--stkH) - var(--stk) + 10px) !important; }
+  .ig-grid.b5-on .ig-gal-card.port > :is(.vd-stage, .ig-stage):not(:empty) + :is(.vd-gal, .ig-gal).stk :is(.vd-tile, .ig-ju) { pointer-events: none; transition: transform .24s cubic-bezier(.32, .72, 0, 1), box-shadow .24s; }
+  .ig-grid.b5-on .ig-gal-card.port > :is(.vd-stage, .ig-stage):not(:empty) + :is(.vd-gal, .ig-gal).stk :is(.vd-tile, .ig-ju) * { pointer-events: none !important; }
+  .ig-grid.b5-on .ig-gal-card.port > :is(.vd-stage, .ig-stage):not(:empty) + :is(.vd-gal, .ig-gal).stk :is(.vd-tile, .ig-ju):not(.vg-stack) { box-shadow: 0 -1px 0 rgba(255, 255, 255, .07), 0 -10px 18px -6px rgba(0, 0, 0, .6); }
+  .ig-grid.b5-on .ig-gal-card.port > :is(.vd-stage, .ig-stage):not(:empty) + :is(.vd-gal, .ig-gal).stk .stk-hit { position: absolute; left: 0; right: 0; top: 0; height: var(--stk); z-index: 3; pointer-events: auto !important; cursor: pointer; }
+  .ig-grid.b5-on .ig-gal-card.port > :is(.vd-stage, .ig-stage):not(:empty) + :is(.vd-gal, .ig-gal).stk .stk-last .stk-hit { height: 100%; }
+  .ig-grid.b5-on .ig-gal-card.port > :is(.vd-stage, .ig-stage):not(:empty) + :is(.vd-gal, .ig-gal).stk :is(.vd-tile, .ig-ju):is(:hover, :focus-visible) { z-index: 4; transform: translateX(14px) !important; box-shadow: 0 14px 34px -8px rgba(0, 0, 0, .75), 0 0 0 1px rgba(255, 255, 255, .1); }
+  body.guard .ig-grid.b5-on .ig-gal-card.port > :is(.vd-stage, .ig-stage):not(:empty) + :is(.vd-gal, .ig-gal).stk :is(.vd-tile, .ig-ju):not(.stk-last)::after { top: calc(var(--stk) / 2 + 4px); }  /* 防窥图标放在露出来的那一截里，抽出来时也不跳 */
+}
+.ig-gal .stk-hit, .vd-gal .stk-hit { display: none; }
+.ig-gal.stk .stk-hit, .vd-gal.stk .stk-hit { display: block; }
+@media (prefers-reduced-motion: reduce) { .ig-grid.b5-on .ig-gal-card.port > :is(.vd-stage, .ig-stage):not(:empty) + :is(.vd-gal, .ig-gal).stk :is(.vd-tile, .ig-ju) { transition: none; } }
+/* 作品页的全部图片 / 全部视频：标题一行在上、格子占满整块（以前被排成左右两栏） */
+#wlist.works:has(> #w-gal, > #w-vgal) { display: flex !important; flex-direction: column; }
+/* 生图右栏“要改的图”：参考图（图 2、摆姿势）在图下面横着一排，不挤在旁边那一列 */
+.ig-v2 #ig-src-f .ig-refs.ig-refs-full { margin-top: 12px; }
+.ig-v2 #ig-src-f .ig-refs.ig-refs-full .ig-refs-r { flex-wrap: nowrap; }
+.ig-v2 #ig-src-f .ig-refs.ig-refs-full .ig-ref { width: 84px !important; height: 84px !important; }
+/* 缩略图在下面一排时：横向滚动条平时不显示，鼠标移上去才出现（2026-11-07 用户截图里那条常驻的滚动条） */
+@media (min-width: 1200px) and (hover: hover) {
+  .ig-grid.b5-on .ig-gal-card:not(.port) > :is(.vd-stage, .ig-stage):not(:empty) + :is(.vd-gal, .ig-gal) { scrollbar-width: thin !important; scrollbar-color: transparent transparent; }
+  .ig-grid.b5-on .ig-gal-card:not(.port) > :is(.vd-stage, .ig-stage):not(:empty) + :is(.vd-gal, .ig-gal):hover { scrollbar-color: rgba(127, 127, 127, .45) transparent; }
+}
+
+/* ===== 第 7 轮（2026-11-07 用户） ===== */
+@media (min-width: 1200px) {
+  /* 剪辑：视频和右边的控件一起居中（控件不再拉满剩下的宽度） */
+  .ig-grid.b5-on #vd-stage .vseg-stage > .vseg.port { justify-content: center; }
+  .ig-grid.b5-on #vd-stage .vseg-stage > .vseg.port > .vseg-side { flex: 0 1 480px !important; min-width: 300px; }
+  /* 拼好的视频下面的分段条：和视频一样宽（以前宽度被算成 0，只剩一个黄色的“3”） */
+  .ig-grid.b5-on #vd-stage > .vd-segbar { align-self: center; width: var(--vdw, 100%); max-width: 100%; flex: none; }
+  /* 缩略图在下面一排：大一点；格子小，删除放在下面信息栏（大画面那一排）里，这里不放，播放按钮小一点，不和别的叠在一起 */
+  .ig-grid.b5-on .ig-gal-card:not(.port) > .vd-stage:not(:empty) + .vd-gal .vd-tile { height: 124px !important; }
+  .ig-grid.b5-on .ig-gal-card:not(.port) > .vd-stage:not(:empty) + .vd-gal .ig-ju { height: 124px !important; width: calc(124px * var(--ar, .75)) !important; }
+  .ig-grid.b5-on .ig-gal-card > .vd-stage:not(:empty) + .vd-gal .vd-del { display: none !important; }
+  .ig-grid.b5-on .ig-gal-card > .vd-stage:not(:empty) + .vd-gal .vd-play { width: 34px; height: 34px; }
+  .ig-grid.b5-on .ig-gal-card > .vd-stage:not(:empty) + .vd-gal .vd-play svg { width: 14px; height: 14px; }
+  /* 输入框里的图标（以前挂在框外面） */
+  .ig-grid.b5-on .ig-top-f .b5-tools.in:not([hidden]) { display: flex; flex-direction: row; align-items: center; gap: 2px; position: static; margin-right: 4px; }
+  .ig-grid.b5-on .ig-top-f .b5-tools.in > * { width: 34px !important; height: 34px !important; }
+  .ig-grid.b5-on .ig-top-f .b5-tools.in > * > span:not(.ig-adv-n):not(.b5-aig) { display: none !important; }
+  .ig-grid.b5-on .ig-top-f .bar-r { display: flex; align-items: center; }
+  .b5-aig { display: inline-grid; place-items: center; min-width: 20px; height: 17px; padding: 0 2px; border: 1.6px solid currentColor; border-radius: 5px; font: 800 10.5px/1 var(--font, system-ui); letter-spacing: .02em; }
+  .ig-grid.b5-on #ig-combo-p { display: none !important; }  /* 组合指令换成 @ 引用 */
+  .ig-grid.b5-on .ig-top-f .vd-sum { display: none !important; }  /* 本次使用：放到“生成”的说明里（以前挤成两行） */
+  /* 输入框左上角的素材 */
+  .ig-grid.b5-on .ig-top-f > .b5-refs:not([hidden]) { display: block; position: absolute; left: 12px; top: 8px; z-index: 6; }
+  .ig-grid.b5-on .ig-top-f.open > .b5-refs:not([hidden]) { left: 16px; top: 16px; }
+  .ig-grid.b5-on .ig-top-f.b5-hasrefs:not(.open) > .ig-comp-top { margin-left: 44px !important; }
+  .ig-grid.b5-on .ig-top-f.b5-hasrefs.open > :not(.ig-cbar):not(.b5-refs):not(.b5-at) { margin-left: 80px !important; width: auto !important; max-width: calc(100% - 80px) !important; }  /* 以前右上角的“使用模板”被挤出框 */
+  .ig-grid.b5-on .ig-top-f.b5-hasrefs.open { min-height: 186px; }
+  .b5-rf-stack { position: relative; width: 34px; height: 34px; }
+  .ig-top-f.open .b5-rf-stack { width: 62px; height: 62px; }
+  .b5-rf-stack > .b5-rf-t { position: absolute; inset: 0; border-radius: 8px; overflow: hidden; background: var(--field); border: 1.5px solid rgba(255, 255, 255, .22); box-shadow: 0 3px 10px rgba(0, 0, 0, .45); transition: transform .25s cubic-bezier(.32, .72, 0, 1); }
+  .b5-rf-stack > .r1 { transform: rotate(-10deg) translate(-3px, 1px); }
+  .b5-rf-stack > .r2 { transform: rotate(9deg) translate(4px, 1px); }
+  .b5-rf-stack .b5-rf-l, .b5-rf-stack .b5-rf-x, .b5-rf-stack .b5-rf-play { display: none; }
+  .b5-rf-stack > .b5-rf-t.e0 { border-style: dashed; display: grid; place-items: center; color: var(--text-2); box-shadow: none; }
+  .b5-rf-stack svg { width: 16px; height: 16px; }
+  .b5-refs .b5-rf-t img, .b5-refs .b5-rf-t video { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+  .b5-rf-pop { position: absolute; left: -8px; bottom: -8px; display: none; gap: 8px; padding: 8px; border-radius: 16px; background: var(--pop); box-shadow: var(--sh); }
+  .ig-top-f.open .b5-rf-pop { bottom: auto; top: -8px; }
+  .b5-refs:hover .b5-rf-pop, .b5-refs:has(:focus-visible) .b5-rf-pop { display: flex; animation: b5rf .24s cubic-bezier(.32, .72, 0, 1); }
+  .b5-refs:hover .b5-rf-stack { visibility: hidden; }
+  @keyframes b5rf { from { opacity: 0; transform: scale(.7) translateX(-14px); transform-origin: left center; } to { opacity: 1; transform: none; } }
+  .b5-rf-pop > .b5-rf-t { all: unset; box-sizing: border-box; position: relative; display: block; flex: none; width: 72px; height: 72px; border-radius: 11px; overflow: hidden; background: var(--field); cursor: pointer; }
+  .b5-rf-pop > .b5-rf-t.e0 { border: 1.5px dashed var(--line); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--text-2); font-size: 11.5px; }
+  .b5-rf-pop > .b5-rf-t.e0:hover { border-color: var(--text-3); color: var(--text); background: var(--hover); }
+  .b5-rf-pop svg { width: 18px; height: 18px; }
+  .b5-refs .b5-rf-t.aud .b5-rf-ai { position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-2); }  /* 放好的声音（生视频的指定声音 / 参考音频）：没有画面，放图标 */
+  .b5-refs .b5-rf-t.aud .b5-rf-ai svg { width: 22px; height: 22px; }
+  .b5-rf-l { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 4px 4px; font-size: 11.5px; text-align: center; color: #fff; background: linear-gradient(transparent, rgba(0, 0, 0, .7)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .b5-rf-t.e0 .b5-rf-l { position: static; padding: 0; background: none; color: inherit; }
+  .b5-rf-x { position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; border-radius: 50%; background: rgba(0, 0, 0, .6); color: #fff; display: none; place-items: center; }
+  .b5-rf-x svg { width: 11px; height: 11px; }
+  .b5-rf-pop > .b5-rf-t:hover .b5-rf-x { display: grid; }
+  .b5-rf-play { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); width: 26px; height: 26px; border-radius: 50%; background: rgba(0, 0, 0, .5); color: #fff; display: grid; place-items: center; }
+  .b5-rf-play svg { width: 11px; height: 11px; }
+  .b5-rf-pv { position: absolute; left: 8px; bottom: calc(100% + 10px); width: 220px; border-radius: 14px; overflow: hidden; background: #000; box-shadow: var(--sh); animation: b5pv .26s cubic-bezier(.32, .72, 0, 1); }
+  .b5-rf-pv[hidden] { display: none; }
+  .b5-rf-pv video { display: block; width: 100%; max-height: min(400px, 50vh); object-fit: contain; }
+  @keyframes b5pv { from { opacity: 0; transform: translateY(12px) scale(.96); } to { opacity: 1; transform: none; } }
+  /* @ 引用的小框 */
+  .b5-at { position: absolute; left: 16px; bottom: calc(100% + 8px); z-index: 40; min-width: 180px; padding: 6px; border-radius: 14px; background: var(--pop); box-shadow: var(--sh); }
+  .b5-at button { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 10px; width: 100%; padding: 6px 8px; border-radius: 9px; color: var(--text); font-size: 13.5px; cursor: pointer; }
+  .b5-at button:hover, .b5-at button.on { background: var(--hover); }
+  .b5-at img { width: 32px; height: 32px; border-radius: 6px; object-fit: cover; }
+}
+body.guard .b5-refs :is(img, video), body.guard .b5-at img { filter: brightness(0); transition: filter .2s; }
+body.guard .b5-rf-pop > .b5-rf-t:hover :is(img, video), body.guard .b5-refs:hover .b5-rf-pv video, body.guard .b5-at button:hover img { filter: none; transition-delay: .9s; }
+@media (prefers-reduced-motion: reduce) { .b5-rf-pop, .b5-rf-pv, .b5-rf-stack > .b5-rf-t { animation: none !important; transition: none !important; } }
+@media (min-width: 1200px) {
+  .ig-grid.b5-on > .ig-top-f.b5-hasrefs { overflow: visible !important; }  /* 素材展开、视频预览要伸到框外面 */
+  /* 选项按钮放不下时：带图标的只留图标（名字在悬停说明里），不再被截掉半截 */
+  .ig-grid.b5-on > .ig-top-f > .ig-cbar > .bar-l.ic .ig-chip:has(> svg + span) > span { display: none; }
+  .ig-grid.b5-on > .ig-top-f > .ig-cbar > .bar-l.ic .ig-chip:has(> svg + span) { gap: 2px; padding-left: 9px; padding-right: 7px; }
+  .ig-grid.b5-on > .ig-top-f > .ig-cbar > .bar-l { -webkit-mask: none !important; mask: none !important; }
+}
+@media (min-width: 1200px) and (hover: hover) {  /* 下面一排缩略图的拖动条：平时淡到几乎看不见，鼠标移到缩略图上才清楚 */
+  .ig-grid.b5-on .gal-ctl .gal-sb { opacity: 0; transition: opacity .2s; }
+  .ig-grid.b5-on .ig-gal-card:has(.vd-gal:hover, .ig-gal:hover, .gal-ctl:hover) .gal-ctl .gal-sb { opacity: 1; }
+}
+
+/* ===== 第 8 轮（2026-11-07 用户） ===== */
+@media (min-width: 1200px) {
+  /* 收起的输入框：长一点、高一点 */
+  .ig-grid.b5-on > .ig-top-f { width: min(640px, var(--b5cw, calc(100% - 40px))); }
+  .ig-grid.b5-on > .ig-top-f:not(.open) { min-height: 58px !important; align-items: center; }
+  .ig-grid.b5-on .ig-top-f:not(.open) > .b5-refs:not([hidden]) { top: 50%; transform: translateY(-50%); }
+  /* 收起时框里只放“增强”这类开关；AI、写法、高级参数展开后才有 */
+  .ig-grid.b5-on > .ig-top-f:not(.open) .b5-tools.in > :is(#ig-ai, #vd-ai, #vd-struct, #vd-adv-open, #ig-adv-open) { display: none !important; }
+  /* 开关打开的样子：都一样（淡底 + 细边 + 亮图标），不再一个白得刺眼、一个看不出来 */
+  .ig-grid.b5-on .ig-top-f .b5-tools.in > :is(.on, .b5-ict.on, [aria-pressed="true"], :has(> input:checked)) { background: color-mix(in srgb, var(--text) 13%, transparent) !important; color: var(--text) !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 32%, transparent) !important; }
+  .ig-grid.b5-on .ig-top-f .b5-tools.in > :is(.on, .b5-ict.on, [aria-pressed="true"], :has(> input:checked))::after { content: ''; position: absolute; right: 5px; top: 5px; width: 5px; height: 5px; border-radius: 50%; background: var(--blue); }
+  /* 本次用的底模、节点、步数：展开时写在框的右上角（2026-11-07 用户：要能看到用的哪个底模、哪个节点） */
+  .ig-grid.b5-on > .ig-top-f.open > .ig-cbar > .vd-sum { display: block !important; position: absolute; top: 20px; right: 180px; left: auto; max-width: 42%; margin: 0 !important; pointer-events: auto; }
+  .ig-grid.b5-on > .ig-top-f.open:not(:has(#ve-tplw:not([hidden]))) > .ig-cbar > .vd-sum { right: 20px; }
+  .ig-grid.b5-on > .ig-top-f.open > .ig-cbar > .vd-sum .vd-sum-t { display: block !important; white-space: nowrap !important; overflow: hidden; text-overflow: ellipsis; -webkit-line-clamp: unset !important; color: var(--text-3); font-size: 12px; }
+  .ig-grid.b5-on > .ig-top-f.open > .ig-cbar > .vd-sum .vd-fold { display: none !important; }  /* 左边缩略图：平铺（默认）时按各自的横竖比例排成瀑布流 */
+  .ig-grid.b5-on .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal.mason:not(.stk) { grid-auto-rows: 4px !important; row-gap: 0 !important; }
+  .ig-grid.b5-on .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal.mason:not(.stk) .vd-tile { aspect-ratio: var(--tar, .75) !important; grid-row-end: span var(--rs, 48) !important; }
+  .ig-grid.b5-on .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal.stk .vd-tile { aspect-ratio: var(--tar, .75) !important; }
+  /* 叠放时：鼠标停在哪张，哪张往上抽出一点（第一排往下，不出边） */
+  .ig-grid.b5-on .ig-gal-card.port > :is(.vd-stage, .ig-stage):not(:empty) + :is(.vd-gal, .ig-gal).stk :is(.vd-tile, .ig-ju):is(:hover, :focus-visible) { transform: translateY(-12px) !important; }
+  .ig-grid.b5-on .ig-gal-card.port > :is(.vd-stage, .ig-stage):not(:empty) + :is(.vd-gal, .ig-gal).stk :is(.vd-tile, .ig-ju).stk-first:is(:hover, :focus-visible) { transform: translateY(6px) !important; }
+  /* 缩略图的排法 / 收起：标题栏左边 */
+  .page-head > .b5-gl { display: flex; align-items: center; gap: 4px; margin-left: 10px; }
+  .page-head > .b5-gl:empty { display: none; }
+}
+/* 播放条：除了播放页，展开时不从底下出来（会挡住提示词）——在导航栏上：导航收起时竖着一条，展开时横着一块 */
+@media (min-width: 761px) {
+  body:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) .pbar { position: fixed !important; left: 8px !important; right: auto !important; top: auto !important; bottom: 192px !important; width: calc(var(--rail-w) - 16px) !important; min-width: 0 !important; max-width: none !important; height: auto !important; transform: none !important; margin: 0 !important;
+    display: flex !important; flex-direction: column !important; align-items: center !important; gap: 4px !important; padding: 10px 4px 6px !important; border-radius: 18px !important; z-index: 44 !important; animation: pbRail .28s cubic-bezier(.32, .72, 0, 1); }
+  body:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) .pbar :is(.pb-meta, .pb-prog, .pb-rate, .vol-ctl, #pb-video, [data-pb="back"], [data-pb="fwd"]) { display: none !important; }
+  body:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) .pbar :is(.pb-now, .pb-center, .pb-right) { flex: none !important; width: auto !important; min-width: 0 !important; margin: 0 !important; padding: 0 !important; }
+  body:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) .pbar .pb-ctl { flex-direction: column !important; gap: 2px !important; }
+  body:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) .pbar .pb-art { width: 44px !important; height: 44px !important; }
+  html.rail-wide body:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) .pbar { left: 12px !important; width: calc(var(--rail-w) - 24px) !important; bottom: 114px !important; flex-direction: column !important; align-items: stretch !important; padding: 12px 12px 10px !important; gap: 8px !important; }
+  html.rail-wide body:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) .pbar .pb-now { display: flex !important; align-items: center; gap: 10px; padding-right: 28px !important; }
+  html.rail-wide body:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) .pbar .pb-meta { display: block !important; min-width: 0; }
+  html.rail-wide body:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) .pbar .pb-ctl { flex-direction: row !important; justify-content: center; gap: 6px !important; }
+  html.rail-wide body:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) .pbar :is([data-pb="back"], [data-pb="fwd"]) { display: inline-flex !important; }
+  html.rail-wide body:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) .pbar .pb-prog { display: flex !important; }
+  html.rail-wide body:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) .pbar .pb-right { position: absolute !important; top: 8px; right: 6px; }
+  html.rail-wide body:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) .pbar .pb-t { display: none; }
+  @keyframes pbRail { from { opacity: 0; transform: translateY(14px) scale(.96); } to { opacity: 1; transform: none; } }
+}
+
+@media (min-width: 1200px) {
+  .ig-grid.b5-on .page-head > .b5-gl .gal-lay:not([hidden]) { display: inline-grid !important; }
+  .ig-grid.b5-on ~ * .b5-gl .gal-lay:not([hidden]), #main > .page-head > .b5-gl > .gal-lay:not([hidden]) { display: inline-grid !important; }
+  /* 收起缩略图：真的收起来（以前“缩略图在下面”那条规则把它又显示出来了） */
+  .ig-grid.b5-on .ig-gal-card.gal-fold.gal-fold > :is(.vd-stage, .ig-stage):not(:empty) + :is(.vd-gal, .ig-gal) { display: none !important; }
+  .ig-grid.b5-on .ig-gal-card.gal-fold.gal-fold > .gal-ctl .gal-sb { display: none !important; }
+}
+
+.page-head.b5-head > .b5-l { display: flex !important; align-items: center; gap: 4px; min-width: 0; justify-self: start; }
+.page-head > .b5-gl, .page-head > .b5-l > .b5-gl { display: flex; align-items: center; gap: 2px; margin-left: 8px; }
+@media (min-width: 761px) {
+  body:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) .pbar .pb-right { display: flex !important; flex-direction: column !important; align-items: center; gap: 2px !important; }
+  html.rail-wide body:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) .pbar .pb-right { position: static !important; flex-direction: row !important; justify-content: center; }
+  html.rail-wide body:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) .pbar .pb-now { padding-right: 0 !important; }
+  body:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) .pbar .pb-center { display: flex !important; flex-direction: column; align-items: stretch; gap: 6px; }
+}
+@media (min-width: 1200px) {  /* 生图 / 生视频：左边缩略图离导航近一点、右栏离窗口边近一点（2026-11-07 用户：左边离导航太远、右边离边界也远） */
+  .main:has(> .ig-grid.b5-on) { padding-left: clamp(24px, 2.6vw, 52px) !important; padding-right: clamp(20px, 2.2vw, 44px) !important; }
+}
+
+/* 空状态：一句话、放在视觉中间（2026-11-07 全量检查） */
+#wlist.works:has(> .w-empty) { display: flex !important; align-items: center; justify-content: center; min-height: calc(100vh - 220px); background: none; }
+@media (max-width: 760px) { #wlist.works:has(> .w-empty) { min-height: calc(100dvh - 330px - env(safe-area-inset-top)); } }
+.w-empty { color: var(--text-3); font-size: 14px; padding-bottom: 8vh; }
+.pl-rows:has(> .pl-empty:only-child) { display: flex; align-items: center; justify-content: center; min-height: calc(100vh - 300px); }
+.pl-empty { padding: 0 0 8vh !important; text-align: center; color: var(--text-3) !important; font-size: 14px !important; }
+.page-head .b5-gl[hidden] { display: none !important; }
+
+.dd-menu { box-sizing: border-box; }
+.dd-menu .dd-i { white-space: normal; overflow-wrap: anywhere; }
+
+/* 全部视频（平铺）：参考 Kling——固定大小的 16:9 横框，左对齐不拉满；竖屏的画面在中间，两边用封面放大模糊的光晕补满（2026-11-07 用户） */
+@media (min-width: 1200px) {
+  /* 每列一样宽、正好铺满一行（以前每格固定宽度靠左排，1200–1440 宽 / iPad Pro 横屏右边空出 140–290 像素，2026-11-09 用户 iPad） */
+  .ig-grid.b5-on .vd-gal.ig-all .ig-jus { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(clamp(240px, 19vw, 400px), 1fr)); justify-content: stretch; gap: 14px 12px; height: auto !important; }
+  .ig-grid.b5-on .vd-gal.ig-all .ig-ju.vd-gl { position: relative; width: auto !important; height: auto !important; aspect-ratio: 16 / 9; margin: 0 !important; border-radius: 12px; overflow: hidden; background: #000; isolation: isolate; }
+  .ig-grid.b5-on .vd-gal.ig-all .ig-ju.vd-gl::before { content: ''; position: absolute; inset: -18%; z-index: 0; background: var(--th, none) center / cover no-repeat; filter: blur(26px) saturate(1.35) brightness(.58); transform: scale(1.05); pointer-events: none; }
+  .ig-grid.b5-on .vd-gal.ig-all .ig-ju.vd-gl > img { position: absolute; inset: 0; z-index: 1; width: 100% !important; height: 100% !important; object-fit: contain !important; }
+  .ig-grid.b5-on .vd-gal.ig-all .ig-ju.vd-gl > :not(img) { z-index: 2; }
+  .ig-grid.b5-on .vd-gal.ig-all .ig-ju.vd-gl.vg-stack { overflow: visible; }
+  .ig-grid.b5-on .vd-gal.ig-all .ig-ju.vd-gl.vg-stack::before { inset: 0; clip-path: inset(0 round 12px); }
+  .ig-grid.b5-on .vd-gal.ig-all .ig-ju.vd-gl.vg-stack > img { border-radius: 12px; }
+}
+body.guard .vd-gal.ig-all .ig-ju.vd-gl::before { filter: brightness(0) !important; transition: filter .2s; }
+body.guard .vd-gal.ig-all .ig-ju.vd-gl:hover::before { filter: blur(26px) saturate(1.35) brightness(.58) !important; transition-delay: .9s; }
+.ig-grid.b5-on .vd-gal.ig-all .ig-ju.vd-gl::after { z-index: 3; }
+
+/* ===== 第 9 轮（2026-11-07 用户） ===== */
+/* 光框：鼠标停在哪个格子上，哪个就多一圈框，框上一道光慢慢转（代替以前的变暗 / 上浮） */
+@property --ga { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+.gl-ring { position: absolute; inset: 0; z-index: 4; border-radius: inherit; padding: 1.5px; pointer-events: none; opacity: 0; transition: opacity .35s;
+  background: conic-gradient(from var(--ga), rgba(255, 255, 255, .1) 0deg, rgba(255, 255, 255, .1) 230deg, rgba(190, 215, 255, .55) 290deg, #fff 325deg, rgba(190, 215, 255, .55) 345deg, rgba(255, 255, 255, .1) 360deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: glSpin 4.2s linear infinite; animation-play-state: paused; }
+:is(.vd-gl, .ig-ju, .vd-tile):is(:hover, :focus-visible) > .gl-ring { opacity: 1; animation-play-state: running; }
+@keyframes glSpin { to { --ga: 360deg; } }
+@media (prefers-reduced-motion: reduce) { .gl-ring { animation: none; } }
+/* 全部视频 / 全部图片：不再变暗、不再上浮放大（以前拼接视频那一摞上浮时底下露缝，竖屏画面也会往上跑） */
+.ig-grid.b5-on .vd-gal.ig-all .ig-ju, .ig-grid.b5-on .ig-gal.ig-all .ig-ju { transition: box-shadow .3s; }
+.ig-grid.b5-on .vd-gal.ig-all .ig-ju:is(:hover, :focus-visible), .ig-grid.b5-on .ig-gal.ig-all .ig-ju:is(:hover, :focus-visible) { transform: none !important; }
+.ig-grid.b5-on .vd-gal.ig-all .ig-ju:hover img, .ig-grid.b5-on .ig-gal.ig-all .ig-ju:hover img { transform: none !important; }
+.ig-grid.b5-on .vd-gal.ig-all .ig-ju:not(.vg-stack):hover, .ig-grid.b5-on .ig-gal.ig-all .ig-ju:hover { box-shadow: 0 12px 30px -8px rgba(0, 0, 0, .55); }
+.ig-grid.b5-on :is(.vd-gal, .ig-gal).ig-all .ig-ju-i { background: none !important; padding: 0 !important; left: 8px; right: auto; bottom: 8px; width: auto; gap: 6px; font-size: 11.5px; padding: 3px 9px !important; border-radius: 999px; background: rgba(0, 0, 0, .45) !important; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); opacity: 0; transform: none !important; transition: opacity .25s; z-index: 3; }
+.ig-grid.b5-on :is(.vd-gal, .ig-gal).ig-all .ig-ju:hover .ig-ju-i { opacity: 1; }
+/* 窄的竖图格子：标签不超出格子（以前按内容一直变宽，文字被格子边缘切掉；2026-11-09 检查发现）——型号名太长时省略，时间保留 */
+.ig-grid.b5-on :is(.vd-gal, .ig-gal).ig-all .ig-ju-i { max-width: calc(100% - 16px); box-sizing: border-box; overflow: hidden; white-space: nowrap; }
+.ig-grid.b5-on :is(.vd-gal, .ig-gal).ig-all .ig-ju-i b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 右上角删除、正中播放 */
+.gl-del { position: absolute; top: 8px; right: 8px; z-index: 5; width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(0, 0, 0, .5); color: #fff; cursor: pointer; opacity: 0; transition: opacity .2s, background .2s; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.gl-del svg { width: 14px; height: 14px; }
+.gl-del:hover { background: rgba(255, 59, 48, .85); }
+.ig-ju:is(:hover, :focus-within) > .gl-del { opacity: 1; }
+.vd-gal:not(.ig-all) .gl-del:not(.gl-sm) { display: none; }
+.ig-grid.b5-on .vd-gal.ig-all .vd-ju-p { all: unset; position: absolute; left: 50%; top: 50%; z-index: 5; width: 46px; height: 46px; margin: -23px 0 0 -23px; display: grid !important; place-items: center; border-radius: 50%; background: rgba(0, 0, 0, .45); color: #fff; cursor: pointer; opacity: 0; transition: opacity .2s, transform .2s; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.ig-grid.b5-on .vd-gal.ig-all .vd-ju-p svg { width: 18px; height: 18px; }
+.ig-grid.b5-on .vd-gal.ig-all .ig-ju:hover .vd-ju-p, .ig-grid.b5-on .vd-gal.ig-all .ig-ju.gl-playing .vd-ju-p { opacity: 1; }
+.ig-grid.b5-on .vd-gal.ig-all .ig-ju.gl-playing:not(:hover) .vd-ju-p { opacity: 0; }
+.ig-grid.b5-on .vd-gal.ig-all .vd-ju-p:hover { transform: scale(1.08); background: rgba(0, 0, 0, .62); }
+.ig-grid.b5-on .vd-gal.ig-all .ig-ju > video.gl-v { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; object-fit: contain; background: transparent; }
+.ig-grid.b5-on .vd-gal.ig-all .ig-ju.vg-stack { overflow: hidden !important; }  /* 那一摞的叠层是阴影，不靠溢出：不再露缝 */
+@media (min-width: 1200px) {
+  /* 方案 A（2026-11-07 用户选）：左边只留一列窄缩略图，横框 + 光晕 */
+  .ig-grid.b5-on .ig-gal-card.port:has(> .vd-stage:not(:empty), > .ig-stage:not(:empty)) { grid-template-columns: 148px minmax(0, 1fr) !important; column-gap: 24px !important; }
+  .ig-grid.b5-on .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal, .ig-grid.b5-on .ig-gal-card.port > .ig-stage:not(:empty) + .ig-gal { grid-template-columns: minmax(0, 1fr) !important; gap: 8px !important; padding: 4px 6px 8px 2px !important; }
+  .ig-grid.b5-on .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal.mason:not(.stk) { grid-auto-rows: max-content !important; row-gap: 8px !important; }
+  .ig-grid.b5-on .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal.mason:not(.stk) .vd-tile, .ig-grid.b5-on .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal .vd-tile { aspect-ratio: 16 / 9 !important; grid-row-end: auto !important; height: auto !important; }
+  .ig-grid.b5-on .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal .vd-tile.vd-gl { position: relative; overflow: hidden; border-radius: 10px; background: #000; isolation: isolate; transition: box-shadow .3s, opacity .3s; }
+  .ig-grid.b5-on .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal .vd-tile.vd-gl.vg-stack { overflow: hidden; }  /* 叠层是阴影，不靠溢出：竖屏画面不再冒出框 */
+  .ig-grid.b5-on .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal .vd-tile.vd-gl::before { content: ''; position: absolute; inset: 0; z-index: 0; border-radius: inherit; background: var(--th, none) center / cover no-repeat; filter: blur(16px) saturate(1.35) brightness(.55); clip-path: inset(0 round 10px); pointer-events: none; }
+  .ig-grid.b5-on .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal .vd-tile.vd-gl > img { position: absolute; inset: 0; z-index: 1; width: 100% !important; height: 100% !important; object-fit: contain !important; border-radius: inherit; }
+  .ig-grid.b5-on .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal .vd-tile.vd-gl > :not(img) { z-index: 2; }
+  .ig-grid.b5-on .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal .vd-tile.vd-gl > .gl-ring { z-index: 4; }
+  .ig-grid.b5-on .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal .vd-tile:not(.on) { opacity: .78; }
+  .ig-grid.b5-on .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal .vd-tile:not(.on):hover { opacity: 1; }
+  .ig-grid.b5-on .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal .vd-tile.on { box-shadow: 0 0 0 2px var(--text) !important; }
+  .ig-grid.b5-on .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal .vd-badges { transform: scale(.82) !important; transform-origin: top left; }
+  .ig-grid.b5-on .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal .vd-play { display: none !important; }
+  /* 换一段播放：画面轻轻淡入 */
+  .ig-grid.b5-on #vd-stage > video { animation: vdIn .32s cubic-bezier(.32, .72, 0, 1); }
+  @keyframes vdIn { from { opacity: 0; transform: scale(.985); } to { opacity: 1; transform: none; } }
+  /* 右栏收起、视频右边空着：下面那排按钮带名字竖着放到视频右边（画面位置不变：底下留出原来那一行的高度） */
+  .ig-grid.b5-on #vd-stage.side-acts { position: relative; padding-bottom: 46px !important; }
+  .ig-grid.b5-on #vd-stage.side-acts > .vd-stage-bar { position: absolute !important; left: calc(var(--b5pl, 0px) + (100% - var(--b5pl, 0px) - var(--b5pr, 0px)) / 2 + var(--vdw, 400px) / 2 + 32px); top: 50%; transform: translateY(-50%); width: 168px !important; max-width: none !important;
+    display: flex !important; flex-direction: column; align-items: stretch; gap: 2px !important; margin: 0 !important; animation: sideIn .32s cubic-bezier(.32, .72, 0, 1); }
+  @keyframes sideIn { from { opacity: 0; transform: translate(-8px, -50%); } to { opacity: 1; transform: translateY(-50%); } }
+  .ig-grid.b5-on #vd-stage.side-acts > .vd-stage-bar > .vd-stage-i { order: -1; white-space: normal !important; font-size: 11.5px; line-height: 1.55; color: var(--text-3); margin: 0 0 10px 10px; max-width: 160px; }
+  .ig-grid.b5-on #vd-stage.side-acts > .vd-stage-bar > :is(.btn, a.btn) { width: 100% !important; height: 36px !important; justify-content: flex-start !important; gap: 10px !important; padding: 0 10px !important; border-radius: 10px !important; font-size: 13px; color: var(--text-2); }
+  .ig-grid.b5-on #vd-stage.side-acts > .vd-stage-bar > :is(.btn, a.btn):hover { background: var(--hover) !important; color: var(--text); }
+  .ig-grid.b5-on #vd-stage.side-acts > .vd-stage-bar > :is(.btn, a.btn) svg { flex: none; }
+  .ig-grid.b5-on #vd-stage.side-acts > .vd-stage-bar > :is(.btn, a.btn) { font-size: 13px !important; white-space: nowrap; }  /* 按钮本来就带名字（窄的时候藏起来），这里显示出来 */
+  .ig-grid.b5-on #vd-stage.side-acts > .vd-stage-bar > :is(.btn, a.btn) svg { width: 18px !important; height: 18px !important; }
+  .ig-grid.b5-on #vd-stage.side-acts #vs-del { margin-top: 8px; } .ig-grid.b5-on #vd-stage.side-acts #vs-del:hover { color: var(--red, #ff3b30); }
+}
+/* 返回键：标题左边 */
+.pg-back { all: unset; box-sizing: border-box; display: inline-grid; place-items: center; width: 34px; height: 34px; margin: 0 6px 0 -8px; border-radius: 10px; color: var(--text-2); cursor: pointer; flex: none; transition: background .15s, color .15s; }
+.pg-back[hidden] { display: none; }
+.pg-back:hover { background: var(--hover); color: var(--text); }
+.pg-back:focus-visible { outline: 2px solid var(--blue); }
+.pg-back svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.pg-titlew:has(> .pg-back:not([hidden])) { display: flex; align-items: center; }
+@media (hover: none) { .gl-del { display: none !important; } }  /* 触屏：看不见的删除键别被误点 */
+
+/* ===== 第 10 轮（2026-11-07 用户） ===== */
+/* 鼠标进到缩略图区域时，别的格子不再变暗（只有停着的那个有光框） */
+.ig-jus:hover .ig-ju:not(:hover) { filter: none !important; }
+/* 左边缩略图往右挪一点（不和上面的按钮、标题完全对齐） */
+@media (min-width: 1200px) {
+  .ig-grid.b5-on .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal { padding-left: 12px !important; }
+  .ig-grid.b5-on .ig-gal-card.port:has(> .vd-stage:not(:empty), > .ig-stage:not(:empty)) { grid-template-columns: 160px minmax(0, 1fr) !important; }
+}
+/* 缩略图上的小删除（右上角）、一组的展开图标（右下角） */
+.gl-del.gl-sm { top: 5px; right: 5px; width: 22px; height: 22px; }
+.gl-del.gl-sm svg { width: 12px; height: 12px; }
+.vd-tile:is(:hover, :focus-within) > .gl-del { opacity: 1; }
+.vg-open { all: unset; box-sizing: border-box; position: absolute; right: 6px; bottom: 6px; z-index: 5; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 8px; background: rgba(0, 0, 0, .5); color: #fff; cursor: pointer; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); transition: background .2s, transform .2s; }
+.vg-open svg { width: 14px; height: 14px; }
+.vg-open:hover { background: rgba(0, 0, 0, .72); transform: scale(1.06); }
+.vd-tile .vg-open { width: 22px; height: 22px; right: 5px; bottom: 5px; border-radius: 7px; } .vd-tile .vg-open svg { width: 12px; height: 12px; }
+/* 触屏：看起来还是那个小方块，能点的范围放大到 40 像素（手机 / iPad 上以前只有 22–26 像素，不好点中；2026-11-09 检查发现） */
+@media (pointer: coarse) {
+  .vg-open, .vd-tile .vg-open { width: 40px; height: 40px; right: 0; bottom: 0; background: none; border-radius: 0; }
+  .vg-open::before { content: ''; position: absolute; inset: 7px; z-index: -1; border-radius: 8px; background: rgba(0, 0, 0, .5); }
+  .vd-tile .vg-open::before { inset: 9px; border-radius: 7px; }
+  .vg-open:hover { background: none; transform: none; }
+}
+.ig-grid.b5-on .ig-gal-card.port > .vd-stage:not(:empty) + .vd-gal .vd-tile .gl-del, .ig-grid.b5-on .ig-gal-card > .vd-stage:not(:empty) + .vd-gal .vd-tile .gl-del { display: grid !important; }
+/* 导航栏上的播放器：从音符往上展开（音符本身也在这一块的最下面），收起时往回缩；下箭头换成音量 */
+@media (min-width: 761px) {
+  body:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) .pbar { bottom: 104px !important; padding: 10px 4px 54px !important; animation: pbUp .34s cubic-bezier(.32, .72, 0, 1) !important; }
+  html.rail-wide body:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) .pbar { bottom: 58px !important; padding-bottom: 52px !important; }
+  body:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) #pb-fab { z-index: 46 !important; }
+  body.pb-closing:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) .pbar { animation: pbDown .23s cubic-bezier(.4, 0, 1, 1) forwards !important; }
+  @keyframes pbUp { from { clip-path: inset(100% 0 0 0 round 18px); opacity: .3; } to { clip-path: inset(0 0 0 0 round 18px); opacity: 1; } }
+  @keyframes pbDown { from { clip-path: inset(0 0 0 0 round 18px); opacity: 1; } to { clip-path: inset(100% 0 0 0 round 18px); opacity: .2; } }
+  #pb-fab.spin { animation: fabSpin .5s cubic-bezier(.32, .72, 0, 1); }
+  @keyframes fabSpin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+  body:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) .pbar .pb-hide { display: none !important; }
+  body:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) .pbar #vol-ctl.vol-ctl { display: block !important; position: relative; }
+  html:not(.rail-wide) body:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) .pbar .pb-now { display: none !important; }  /* 收着的导航：封面就是下面那个音符，不再重复 */
+  body:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) .pbar .vol-pop { left: calc(100% + 14px) !important; bottom: -8px !important; margin-left: 0 !important; }
+  /* 播放列表、音效：贴着这块播放器在右边弹出（不再从窗口底部） */
+  body:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) :is(#qpanel, #spanel) { left: calc(var(--rail-w) + 12px) !important; right: auto !important; bottom: 100px !important; transform-origin: bottom left !important; }
+}
+@media (prefers-reduced-motion: reduce) { #pb-fab.spin, body:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) .pbar { animation: none !important; } }
+body.guard .vd-gal .vd-tile.vd-gl::before { filter: brightness(0) !important; transition: filter .2s; }  /* 防窥：左边缩略图的光晕也先是黑的 */
+body.guard .vd-gal .vd-tile.vd-gl:hover::before { filter: blur(16px) saturate(1.35) brightness(.55) !important; transition-delay: .9s; }
+
+/* 电脑上不再放页面标题（导航栏上已经看得出在哪一页：展开时高亮那一项，收起时那一类换成这一页的图标和名字）；手机上保留 */
+@media (min-width: 761px) { #main > .page-head .page-title { display: none !important; } }
+#rail .cat-b.cur-page .ic svg { width: 22px; height: 22px; }
+
+@media (max-width: 760px) {  /* 手机：标题右边放不下文字按钮，只留图标；标题不换行 */
+  .gal-ph .page-title { white-space: nowrap; }
+}
+
+
+/* 2026-11-08 用户：应用里生图 / 生视频是固定高度的版面，整页不该再能上下滚（内容都在各自的框里滚） */
+@media (min-width: 761px) { html:has(#main > .ig-grid.b5-on), html:has(#main > .ig-grid.b5-on) > body, html:has(#main > .ig-grid.b5-side), html:has(#main > .ig-grid.b5-side) > body { overflow: hidden; } }
+
+/* 2026-11-08 手机 ①：页面不该能左右滑（iOS 上小数像素、伸出右边的隐藏元素都会让整页横着动）；弹窗只上下滚，横滑不再传给后面的页面 */
+@media (max-width: 760px) {
+  html, body { overflow-x: clip; }
+  .modal { overflow-x: hidden; overscroll-behavior-x: none; }
+}
+/* 2026-11-08 手机 ②：iOS 26 主屏幕 App 顶部的模糊带比状态栏长，标题正好在里面（只放一条状态栏高的实色条不够）。
+   WebKit 的规则：顶边有一块吸顶 / 固定、带底色、够高够宽的盒子时，就用它的颜色、不再糊——标题栏改成吸顶、实色、占满整宽，从屏幕最顶上一直盖到标题下面 */
+@media (display-mode: standalone) and (max-width: 760px) {
+  .main:not([data-page="prompt"]) > .page-head { position: sticky; top: 0; z-index: 30; margin-left: -14px !important; margin-right: -14px !important; padding-left: 14px !important; padding-right: 14px !important; width: auto !important; max-width: none !important; box-sizing: border-box; background: var(--canvas); }
+}
+/* 2026-11-09 用户：iPad 从主屏幕打开（宽，用左侧导航栏那套）也有手机的两个问题——顶部被系统糊一条、导航栏最上面的图标和状态栏叠在一起。
+   和手机一样：标题栏贴顶、不透明、横向铺满（WebKit 看到顶边被有背景的固定 / 贴顶元素盖住就不糊）；导航栏顶部给状态栏让位 */
+@media (display-mode: standalone) and (min-width: 761px) {
+  /* 第二版（用户：还有点糊）：再加手机那条盖住状态栏的不透明横条（层级在导航栏、标题栏之上）；导航栏、标题栏的位置和第一版一样 */
+  #sb-strip { display: block; position: fixed; z-index: 45; top: 0; left: 0; right: 0; height: env(safe-area-inset-top); background: var(--canvas); }
+  .rail { padding-top: calc(16px + env(safe-area-inset-top)) !important; }
+  .main:not([data-page="prompt"]) > .page-head { position: sticky; top: 0; z-index: 30; padding-top: calc(env(safe-area-inset-top) + 12px) !important; background: var(--canvas);
+    box-shadow: 0 0 0 100vmax var(--canvas); clip-path: inset(0 -100vmax); }
+}
+
+
+/* 2026-11-08 全面检查：上面这条“放不下就只留图标”以前只在宽窗口生效，窄窗口（如 900 宽）和手机上最后一个选项还是被截掉一半——所有宽度都按这个来 */
+.ig-top-f > .ig-cbar > .bar-l.ic .ig-chip:has(> svg + span) > span { display: none; }
+.ig-top-f > .ig-cbar > .bar-l.ic .ig-chip:has(> svg + span) { gap: 2px; padding-left: 9px; padding-right: 7px; }
+.ig-top-f > .ig-cbar > .bar-l.ic { -webkit-mask: none !important; mask: none !important; }
+/* 2026-11-08 全面检查：窗口矮的时候（横着的手机、矮窗口）分类往下排到了播放器小圆钮的位置，“工具”被圆钮盖住——
+   分类区下面给圆钮留出位置；矮窗口里分类只留图标、间距收紧 */
+@media (min-width: 761px) {
+  .rnav { margin-bottom: 52px; padding-bottom: min(8vh, 60px) !important; }
+}
+@media (min-width: 761px) and (max-height: 620px) {
+  .rail { padding-top: 8px !important; padding-bottom: 8px !important; gap: 2px !important; }
+  .rnav { gap: 2px !important; padding-bottom: 0 !important; margin-bottom: 48px; }
+  html:not(.rail-wide) .rnav .cat-b > span { display: none; }
+  html:not(.rail-wide) .rnav .cat-b { min-height: 40px !important; padding-top: 0 !important; padding-bottom: 0 !important; }
+  .rail-top { gap: 0 !important; }
+  .rail .brand { margin-bottom: 0 !important; }
+}
+
+/* 2026-11-08 全面检查（手机真滑动测出来的）：选项那一排只留图标还放不下时（375 宽的手机）可以左右滑、后面的被截一半 → 折到第二行 */
+.ig-top-f > .ig-cbar > .bar-l.wr { flex-wrap: wrap !important; overflow: visible !important; row-gap: 6px; }
+.ig-top-f > .ig-cbar > .bar-l.wr .ig-chips { flex-wrap: wrap !important; }
+.bar-l > .vd-lang.in-bar .vd-lang-s button:not(.on) { display: none; }
+.bar-l > .vd-lang.in-bar .vd-lang-s { padding: 0; }
+/* 2026-11-08 全面检查：作品列表标题太长时，后面的“图片 / 视频”标记被一起省略掉——标题自己省略，标记一直显示 */
+#wlist .work .tt { display: flex; align-items: center; min-width: 0; }
+#wlist .work .tt > .tt-t { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#wlist .work .tt > .w-kt { flex: none; }
+/* 2026-11-08 全面检查：手机上作品页的分类一行放不下，“提示词对话”只露出三成——手机上用短名字（转文字 / 对话），间距收一点 */
+#w-kind .wk-s { display: none; }
+@media (max-width: 760px) { #w-kind .wk-l { display: none; } #w-kind .wk-s { display: inline; } #w-kind > button { padding-left: 8px !important; padding-right: 8px !important; } }
+
+/* 2026-11-08 全面检查：标题旁边“缩略图位置”和“收起缩略图”两个长方形图标几乎一样——位置挪进齿轮菜单，这里只留收起 */
+#main .gal-lay:not(.gal-fb), .ig-gal-card .gal-lay:not(.gal-fb) { display: none !important; }
+/* 第一步：放不下时先收起次要按钮的字（AI 优化、秋叶写法、高级参数…，名字在悬停说明里） */
+.ig-top-f > .ig-cbar > .bar-l:is(.ic1, .ic) .ig-cb:has(> svg + span) > span { display: none; }
+.ig-top-f > .ig-cbar > .bar-l:is(.ic1, .ic) .ig-cb:has(> svg + span) { gap: 0; padding-left: 8px; padding-right: 8px; }
+.ig-top-f > .ig-cbar > .bar-l.ic1 { -webkit-mask: none !important; mask: none !important; }
+
+/* 2026-11-08 用户：剪辑 / 成品 / 对比右上角的 × 要加回来——它和“全部视频”不一样：只让当前这个视频不在这里显示，不回到全部视频 */
+.ig-grid.b5-on .vd-stage > .ig-stage-x.vd-x { display: grid !important; }
+.vd-stage:not(:empty) { position: relative; }
+.vd-stage > .vd-x { top: 10px; right: 10px; z-index: 6; }
+@media (hover: hover) { .vd-stage:hover > .vd-x, .vd-stage > .vd-x:focus-visible { opacity: 1; } }
+/* 2026-11-08：导航栏上展开的播放器跟着音符圆钮摆（圆钮在这一块的最下面）。私密空间里底部多一个“退出”按钮、圆钮往上挪一格时，
+   播放器以前还在原来的高度，圆钮正好盖住里面的音量键（看起来像少了一个按钮、中间空一块） */
+@media (min-width: 761px) {
+  body:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) .pbar { bottom: calc(var(--fab-b, 112px) - 8px) !important; }
+  html.rail-wide body:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) .pbar { bottom: calc(var(--fab-b, 66px) - 8px) !important; }
+}
+/* 缩略图换排法 / 展开的一瞬间先藏住（app.js galLayBind），排好了再出现 */
+.ig-gal-card.gal-hold > :is(#vd-gal, #ig-gal, .gal-ctl) { visibility: hidden !important; }
+/* 2026-11-08 用户：× 关掉后的占位“有点奇怪”——一个只有 128px 宽、却和画面一样高的虚线框。改成不画框，占满这块地方，图标和一句话放在正中间 */
+#vd-stage > .vd-closed { flex: 1 1 auto; width: 100%; align-self: stretch; border: 0 !important; background: transparent !important; box-sizing: border-box; }
+#vd-stage:has(> .vd-closed) { display: flex; }
+/* 输入框收成一行时：右边的一键清除 × 和文字、按钮在同一条中线上（以前偏下 7px） */
+.ig-top-f:not(.open) .clr-wrap.ta > .clr-x { top: 50%; transform: translateY(-50%); }
+/* 2026-11-10：改视频“本次使用”那行和选项按钮挤在一排放不下时让位（app.js fitBl 加 .nosum），回到输入框左边显示；参数按钮上的字优先 */
+.ig-grid.b5-on > .ig-top-f.open > .ig-cbar.nosum > .vd-sum { display: none !important; }
+/* 2026-11-10 用户：输入框左上角那叠素材——一个都没放时（.none）鼠标移上去不展开，点一下直接选；展开后点了一格、菜单 / 选素材窗口开着时（.keep）一直展开 */
+@media (min-width: 1200px) {
+  .b5-refs.none:hover .b5-rf-pop, .b5-refs.none:has(:focus-visible) .b5-rf-pop { display: none; }
+  .b5-refs.none:hover .b5-rf-stack { visibility: visible; }
+  .b5-refs.none .b5-rf-stack { cursor: pointer; }
+  .b5-refs.none .b5-rf-stack > .b5-rf-t.e0:hover { border-color: var(--text-3); color: var(--text); }
+  .b5-refs.keep .b5-rf-pop { display: flex; animation: none; }
+  .b5-refs.keep .b5-rf-stack { visibility: hidden; }
+}
+/* 2026-11-10 用户：“本次使用”那一行始终放在提示词框外的左边（#vd-cur），框里不再显示；参数按钮有地方就把字显示全（以前最宽 240px，“跟随”被截成“跟...”），挤的时候才省略 */
+.ig-grid.b5-on > .ig-top-f.open > .ig-cbar > .vd-sum { display: none !important; }
+@media (min-width: 1200px) {
+  .ig-grid.b5-on.b5-pc > .ig-top-f.open .ig-chip { max-width: none; }
+  .ig-grid.b5-on > .ig-top-f.open > .ig-cbar > .bar-l > .ig-chips { min-width: 0; flex: 0 1 auto; }
+  .ig-grid.b5-on > .ig-top-f.open > .ig-cbar > .bar-l > .ig-chips > .ig-chip { flex: 0 1 auto; min-width: 0; }
+}
+
+/* 2026-11-10 用户：生图页选了图片大图不显示——这一块是竖排居中（align-items: center），里面的图是绝对定位、撑不开宽度，框被缩成 0 宽。让它占满整行 */
+.ig-grid.b5-on #ig-stage > .ig-stage-img { align-self: stretch; width: 100%; flex: 1 1 auto; min-height: 0; }
+#ig-stage > .vd-closed { flex: 1 1 auto; width: 100%; align-self: stretch; border: 0 !important; background: transparent !important; box-sizing: border-box; }
+#ig-stage:has(> .vd-closed) { display: flex; }
+.ig-stage-src > .ig-stage-lab { position: absolute; left: 12px; top: 10px; z-index: 1; padding: 2px 8px; border-radius: 6px; font-size: 12px; color: #fff; background: rgba(0, 0, 0, .55); pointer-events: none; }
+
+/* 2026-11-10 用户：生图页任务（宽窗口）收进右下角的小条（#ig-jp，和生视频页同一套样式）；上方的任务卡片平时不显示，点小条（空画面 / 全部图片时）才展开，最多两条高、多的滚动 */
+.ig-grid.b5-on #ig-live.dock-mode:not(.open) { display: none !important; }
+.ig-grid.b5-on #ig-live.dock-mode.open { overflow-y: auto; overscroll-behavior: contain; flex: none; }
+.ig-grid.b5-on #ig-live.dock-mode.open > .card { margin: 0 0 8px; }
+
+/* 2026-11-10：素材排里点图片也在上方放大（和点视频一样） */
+.b5-rf-pv > img { display: block; width: 100%; max-height: min(400px, 50vh); object-fit: contain; background: #000; }
+.b5-rf-pv > img[hidden], .b5-rf-pv > video[hidden] { display: none !important; }
+
+.ig-stage-err { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: var(--text-2); font-size: 13px; pointer-events: none; }  /* 2026-11-10：大图读取失败 */
+
+/* 2026-11-10：局部重画在大画面上涂（原图面板里的图 + 画布搬上来） */
+#ig-stage > .ig-stage-paint { flex: 1 1 auto; min-height: 0; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+#ig-stage .ig-stage-pbox { flex: 1 1 auto; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
+#ig-stage .ig-src.stg { position: relative; width: fit-content !important; height: auto !important; max-width: 100%; max-height: 100%; margin: 0 !important; aspect-ratio: auto !important; border-radius: 12px; overflow: hidden; display: block; }
+#ig-stage .ig-src.stg > img { display: block; max-width: 100%; max-height: calc(100vh - 260px); width: auto !important; height: auto !important; object-fit: contain; position: static !important; }
+#ig-stage .ig-src.stg > .ig-src-x, #ig-stage .ig-src.stg > .ig-src-b { display: none !important; }
+#ig-stage .ig-stage-mbar { flex: none; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
+#ig-stage .ig-stage-mbar input[type=range] { width: 140px; }
+/* AI 助手输入框不要一键清空的 ×（2026-11-11 用户）：外面那层（也放“查看完整提示词”）留着，排版不变，只藏 × */
+.pg-composer .clr-x { display: none !important; }
+/* 详情页（图片 / 视频）里能选中复制的文字（2026-11-11 用户：能复制，但鼠标移上去没有变化）：文字光标 + 移上去一层淡底色 */
+.vd-view .vd-prompt { cursor: text; border-radius: 8px; padding: 6px 8px; margin-left: -8px; margin-right: -8px; transition: background-color .15s; }
+.vd-view .vd-prompt:hover { background: var(--hover); }
+.vd-view .vd-kv span { cursor: text; border-radius: 5px; padding: 1px 4px; margin: -1px -4px; transition: background-color .15s, color .15s; }
+.vd-view .vd-kv span:hover { background: var(--hover); color: var(--text); }
+@media (hover: none) { .vd-view .vd-prompt:hover, .vd-view .vd-kv span:hover { background: none; } }
+/* 高级参数里改过的项：标签前一个小蓝点；收起的“更多参数”里有改过的，标题后也有（2026-11-11 用户） */
+.field.adv-chg > .label::before, .field.adv-chg > label > .label::before, .ig-sec.adv-chg::before, label.adv-chg:not(.field)::before,
+details.adv-chg-in > summary > span:first-child::after {
+  content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--blue); vertical-align: middle; margin: -2px 6px 0 0; flex: none; }
+details.adv-chg-in > summary > span:first-child::after { margin: -2px 0 0 6px; }
+/* 导航（2026-11-11 方案 C + D）：一级常用 + “更多”（分组小标题、☆ 固定）；Ctrl+K 搜索页面 */
+.fly-h { padding: 8px 10px 3px; font-size: 11.5px; font-weight: 600; color: var(--text-3); }
+.fly > .fly-h:first-child { padding-top: 3px; }
+.fly a .fly-pin { margin-left: auto; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 7px; color: var(--text-3); opacity: 0; transition: opacity .12s; }
+.fly a .fly-pin svg { width: 14px; height: 14px; }
+.fly a:hover .fly-pin, .fly a:focus-visible .fly-pin { opacity: 1; }
+.fly a .fly-pin:hover { color: var(--text); background: var(--hover); }
+html.rail-wide .rnav > .cat.cat-pin + .cat.cat-pin { margin-top: 2px !important; }
+html.rail-wide .fly-h { padding: 4px 10px 2px; }
+@media (max-width: 760px) {
+  .rnav > .cat-pin:nth-child(n+5), .rnav > .cat-more { display: none !important; }  /* 手机底部：一级前 4 个 + “更多”（设置里列出其余页面） */
+  .gp-pages .gp-pic { width: 20px; height: 20px; display: grid; place-items: center; flex: none; } .gp-pages .gp-pic svg { width: 20px; height: 20px; }
+}
+.nav-pal-bg { position: fixed; inset: 0; z-index: 300; background: rgba(0, 0, 0, .28); display: flex; justify-content: center; align-items: flex-start; padding-top: 14vh; animation: fade .12s; }
+.nav-pal { width: min(440px, 92vw); background: var(--pop); border-radius: 16px; box-shadow: var(--sh, 0 20px 50px rgba(0, 0, 0, .35)); padding: 8px; }
+.nav-pal > .input { width: 100%; height: 40px; font-size: 15px; margin-bottom: 6px; }
+.nav-pal-l { max-height: 50vh; overflow-y: auto; }
+.nav-pal-i { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; cursor: pointer; color: var(--text-2); font-size: 14px; }
+.nav-pal-i svg { width: 18px; height: 18px; flex: none; }
+.nav-pal-i.on, .nav-pal-i:hover { background: var(--hover); color: var(--text); }
+.nav-pal-i kbd { margin-left: auto; font: 11px ui-monospace, Consolas, monospace; color: var(--text-3); padding: 1px 6px; border-radius: 5px; background: var(--field); }
+.nav-pal-e { padding: 12px 10px; color: var(--text-3); font-size: 13px; }
+.nav-pal-i svg, .gp-pages .gp-pic svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }  /* 图标取自导航栏：线条样式只在导航栏里有 */
+
+/* 2026-11-14 手机：标题栏（标题 + 搜索框）和下面的卡片之间留够距离（以前只有 4px，几乎贴着）；
+   主屏幕 App 里标题栏是吸顶的，往上滑时内容从它下面经过——底边加一段渐隐，不再是一条线直接切开（iOS 26 的“滚动边缘效果”） */
+@media (max-width: 760px) {
+  #main > .page-head { padding-bottom: 12px !important; margin-bottom: 4px !important; row-gap: 12px; }
+}
+@media (display-mode: standalone) and (max-width: 760px) {
+  .main:not([data-page="prompt"]) > .page-head::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 22px; pointer-events: none;
+    background: linear-gradient(180deg, var(--canvas), color-mix(in srgb, var(--canvas) 0%, transparent)); }
+}
+
+/* 2026-11-14 第二版（black-translucent 恢复后）：iOS 26.1+ 会在状态栏下面再糊一小条（页面去不掉）。
+   做法参照 flight-tracker #212：模糊那一段里只放实色背景，文字和按钮都放到“状态栏高度 + 约 20px”以下 */
+@media (display-mode: standalone) and (max-width: 760px) {
+  .main:not([data-page="prompt"]) > .page-head { padding-top: calc(env(safe-area-inset-top) + 26px) !important; padding-bottom: 6px !important; margin-bottom: 0 !important; }  /* 11-14 第三版：+18 还被糊到边，挪到 +26；下边距收掉同样多，总高度不变 */
+  .main[data-page="prompt"] .pg-top { padding-top: calc(env(safe-area-inset-top) + 32px) !important; }
+  .main[data-page="prompt"] .pg-card { padding-top: calc(env(safe-area-inset-top) + 88px) !important; }
+  body > #pg-hist { padding-top: calc(env(safe-area-inset-top) + 30px) !important; }
+  .m-dw { padding-top: calc(env(safe-area-inset-top) + 28px); }
+  .np .np-top { padding-top: calc(env(safe-area-inset-top) + 26px) !important; min-height: 48px; }
+  .np #np-close { top: calc(env(safe-area-inset-top) + 22px); }
+  .iv-top { padding-top: calc(30px + env(safe-area-inset-top)); }
+  .toast.new-files { top: calc(40px + env(safe-area-inset-top)); }
+}
+/* iOS 26+ 主屏幕 App + black-translucent：页面的视口比屏幕短一个状态栏的高度，固定定位的东西（全屏播放页）画到那里就停了，底下露出一条黑（WebKit bug 301108）。
+   做法来自 frappe/frappe-ui #1289：让页面至少和屏幕一样高；min() 防止不透明状态栏的旧图标出现多余的滚动 */
+@media (display-mode: standalone) {
+  html { min-height: min(100lvh, calc(100% + env(safe-area-inset-top))); }
+}
+/* 右边的记录卡片和左边一样高（fitSide）：标题在上，下面的列表在卡片里滚 */
+.side-col > .card.side-fit { display: flex; flex-direction: column; box-sizing: border-box; overflow: auto; overscroll-behavior: contain; }
+.side-col > .card.side-fit > :not(.card-title):not(h3) { flex: 1 1 auto; }
+.side-col > .card.side-fit :has(> .rec-empty:only-child) { height: auto !important; min-height: 0 !important; }  /* 空的时候：撑满卡片就行，不多出一截出滚动条 */
+/* 导航栏里的短名（shell.js SHORT）：收起时 / 手机底栏用短名，展开的导航栏用全名 */
+.rail .rn-f { display: none; }
+html.rail-wide .rail .rn-f { display: inline; } html.rail-wide .rail .rn-s { display: none; }
+@media (max-width: 760px) { html.rail-wide .rail .rn-f { display: none; } html.rail-wide .rail .rn-s { display: inline; } }
+/* 2026-11-16 检查：矮窗口（约 600px 高）右栏只多出几像素也能滚——上下留白收一点 */
+@media (max-height: 660px) { .ig-grid.b5-on .b5-sc { padding-top: 10px; padding-bottom: 10px; } }
+/* 2026-11-16 检查：横屏手机（约 440 高）导航栏放不下，最后一项「更多」被播放器圆钮盖住——矮窗口里分类靠上、不留底部空白 */
+@media (min-width: 761px) and (max-height: 560px) {  /* 导航栏比屏幕高：底下的显卡 / 设置出了屏幕、圆钮压在「更多」上 */
+  html:not(.rail-wide) .rail-top { display: none; }  /* 展开导航 / 精简播放器两个小钮：这么矮的窗口用不上 */
+  .rnav { justify-content: flex-start; padding-bottom: 0; }
+  html:not(.rail-wide) #pb-fab, html:not(.rail-wide) #pb-fab[hidden] { bottom: 98px !important; }
+}
+/* 2026-11-16 检查：手机上播放条展开时（在底栏上面），列表最后一排的按钮滚到底也被它盖住——底部多留出播放条的高度 */
+@media (max-width: 760px) { body:not(.pb-min):not(.compact) .main { padding-bottom: calc(172px + env(safe-area-inset-bottom)); } }
+
+/* 键盘焦点框：约 40 个按钮写了 all: unset，把 app.css 里 :where() 的焦点框也清掉了（键盘操作时看不出在哪，2026-11-16 审查）；只在键盘操作时出现 */
+button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+/* 输入框下面那排的“提取衣服”（2026-11-17）：开着时蓝色 */
+.ig-chip.ig-xchip.on { color: var(--blue); background: color-mix(in srgb, var(--blue) 10%, transparent); box-shadow: inset 0 0 0 1.5px var(--blue); }
+html:not(.ph) .ig-chip.ig-xchip > span { display: none; }
+html:not(.ph) .ig-chip.ig-xchip { padding: 0 9px; flex: none !important; }
+/* 全屏播放页（电脑，2026-11-17 用户）：
+   正在播的那句——放大 2% 往右长、被字幕框右边截掉（左圆角右直角），颜色是深色主题通用的蓝底：留出右边、改成半透明白底，两边都是圆角；颜色、底色、放大一起慢慢过渡 */
+html:not(.ph) .np .lyrics .subs:not(.para-mode) > .sub { margin-right: 3%; transition: color .45s, background-color .45s, box-shadow .45s, transform .55s cubic-bezier(.22, 1, .36, 1), filter .45s; }
+html:not(.ph) .np .lyrics .sub.on { background: rgba(255, 255, 255, .10); box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .10); color: #fff; }
+html:not(.ph) .np .lyrics .para .sub.on { background: rgba(255, 255, 255, .14); box-shadow: none; }
+html:not(.ph) .np .lyrics .sub:not(.on):hover { background: rgba(255, 255, 255, .06); }
+/* 音频时“字幕 / 播放列表”放到右上角（左上角的收起按钮单独在左边）；视频的排法不动 */
+html:not(.ph) .np:not(.is-video) .np-tabs { margin-left: auto; margin-right: 12px; }
+/* 播放列表：没有拖动把手的行（控制手机时显示的手机播放列表）只有“封面 + 标题”两列——原来套着四列，标题挤进 36 像素宽的那一列 */
+.ql-row:not([draggable]) {  /* 手机的播放列表（没有拖动把手）；以前用 :has(> .ql-grip)，等价但每次改动都要重查 */ grid-template-columns: 36px minmax(0, 1fr); }
+html:not(.ph) .np:not(.is-video) .np-tools { margin-left: 0; }  /* 右边那组本来也是 margin-left: auto，两个一起会把空间平分、页签停在中间 */
+/* 字幕工具栏的“重新生成”（2026-11-17）：和“翻译”“查找”一样的小按钮 */
+.np-regen { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.np-regen svg { width: 14px; height: 14px; }
+.lyrics .np-regen { color: rgba(255, 255, 255, .7); }
+.np-empty .np-gen svg { width: 16px; height: 16px; }
+/* 播放页文件很多时（只画看得见的一段）：关掉浏览器的滚动锚定（2026-11-17 用户：滚一下滚轮就一路滚到底 / 到顶）——
+   换掉那一段、上面的占位变高时，浏览器为了“保持眼前那一行不动”自己去改滚动位置，又触发换一段，一直循环 */
+.pl-rows.pl-virt, .pl-rows.pl-virt * { overflow-anchor: none; }
+/* 11-17 全面检查：触屏（iPad）上播放页“全部展开 / 收起”只有 24×24，不好点 */
+@media (pointer: coarse) { .ps-allbtn { min-width: 40px; min-height: 40px; } }
+/* 滑动查看字幕时（.browsing，subsWidget 加的）：全部变清楚、调亮，停手 2.5 秒后恢复（2026-11-17 用户，照 Apple Music） */
+.lyrics .subs.browsing .sub { filter: none !important; }
+.lyrics .subs.browsing .sub:not(.on) { color: rgba(255, 255, 255, .7) !important; text-shadow: none !important; }
+/* 全屏播放页的音量（2026-11-17 用户）：照 Apple Music——控制按钮下面一条，左边小喇叭（点了静音），右边大喇叭；视频放在按钮那一排的右边 */
+.np-ctl { flex-wrap: wrap; row-gap: 14px; }
+.np-vol { flex: 0 0 calc(100% + 8px); margin: 0 -4px; display: flex; align-items: center; gap: 8px; color: rgba(255, 255, 255, .8); }
+.np-vb { all: unset; flex: none; width: 22px; height: 30px; display: grid; place-items: center; border-radius: 50%; cursor: pointer; color: inherit; }
+.np-vb:hover { color: #fff; }
+.np-vb.on { color: rgba(255, 255, 255, .8); }
+.np-vb svg { width: 19px; height: 19px; flex: none; }
+.np-vknob { position: absolute; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, .35); pointer-events: none; transform: scale(.75); transition: transform .15s; }
+.np-vtrack:hover .np-vknob, .np-vtrack.drag .np-vknob, .np-vtrack:focus-visible .np-vknob { transform: scale(1); }
+.np-vtrack { position: relative; flex: 1; min-width: 0; height: 22px; cursor: pointer; touch-action: none; outline: none; }
+.np-vtrack::before, .np-vfill { content: ""; position: absolute; left: 0; top: 50%; height: 5px; margin-top: -2.5px; border-radius: 5px; transition: height .15s, margin .15s; }
+.np-vtrack::before { right: 0; background: rgba(255, 255, 255, .22); }
+.np-vfill { background: rgba(255, 255, 255, .85); pointer-events: none; }
+.np-vtrack:focus-visible::before { box-shadow: 0 0 0 2px var(--blue); }
+.np.is-video .np-ctl { position: relative; }
+html:not(.ph) .np.is-video .np-vol { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 168px; }
+body.rc-ctl .np-vol { display: none; }  /* 控制手机播放时：音量在手机上调 */
+html.ph .np .np-vol { padding: 0 2px; }
+html.ph .np .np-vtrack { height: 32px; }
+html.ph .np .np-vtrack::before, html.ph .np .np-vfill { height: 7px; margin-top: -3.5px; }
+html.ph .np .np-vknob { width: 24px; height: 24px; margin: -12px 0 0 -12px; transform: scale(.8); }
+@media (max-width: 760px) { .np .np-ctl { row-gap: 16px; } .np:not(.is-video) .np-stage { width: min(74vw, 290px, calc(100vh - 520px)); } }
+/* 全屏播放页字幕（2026-11-17 用户）：正在播的那句在偏上 38% 的位置（subsWidget）——下面留够空，最后几句也能停在那；右边这一栏整体往上提一点 */
+.lyrics .subs:not(.para-mode) { padding-top: 22vh; padding-bottom: 56vh; }
+.lyrics .subs.para-mode { padding-top: 22vh; padding-bottom: 56vh; }
+html:not(.ph) .np:not(.is-video) .np-right { margin-top: -6vh; }
+@media (max-width: 760px) { .np .lyrics .subs:not(.para-mode), .np .lyrics .subs.para-mode { padding-top: 10vh; padding-bottom: 40vh; } }
+/* 滚动时行不亮（app.js 里的 .is-scrolling；2026-11-17 用户）：只压住悬停的样子，行照样能点（2026-11-17 审查 F22：以前把指针事件整个关掉 220 毫秒，滚完立刻点会点不到）。鼠标快速划过时不闪：高亮晚 70 毫秒出现，移开立刻消失 */
+html.is-scrolling :is(.pl-row, .ql-row, .ps-item, .pl-card, .sub):not(.on):not(.sel):not(.kb):hover { background: transparent !important; }
+html.is-scrolling :is(.pl-row, .ql-row, .pl-card):hover :is(.pl-acts, .ql-x, .pc-acts, .fav-btn:not(.on)) { opacity: 0 !important; }
+html.is-scrolling .pl-card:hover .pc-art > img { transform: none !important; }
+html:not(.ph) :is(.pl-row, .ql-row, .ps-item):hover { transition-delay: 70ms, 70ms, 0s, 0s; }
+
+/* 2026-11-17 UI 审查 #5：输入框提示文字显式用 --text-3（浅色 #6a6a6f，白底约 5.3:1；以前手机 WebKit 用默认的 #a9a9a9，约 2.2:1）。只改提示文字，正文层次不动 */
+:is(input, textarea)::placeholder { color: var(--text-3); opacity: 1; }
+/* 2026-11-17 用户：电脑上“回到正在播放的文件”放在标题栏右边会挤走搜索框、也不好点 → 右下角悬浮（播放条上方），手机仍在标题栏 */
+html:not(.ph) #main > .page-head > .ph-locate { position: fixed; right: 44px; bottom: 98px; z-index: 41; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px; display: grid; place-items: center; cursor: pointer;
+  color: var(--text); background: var(--lg-bg); -webkit-backdrop-filter: blur(22px) saturate(180%); backdrop-filter: blur(22px) saturate(180%); box-shadow: inset 0 1px 0 var(--lg-hi), inset 0 0 0 .5px var(--lg-edge), var(--lg-sh); transition: transform .15s; }
+html:not(.ph) #main > .page-head > .ph-locate:hover { transform: scale(1.06); }
+html:not(.ph) #main > .page-head > .ph-locate:active { transform: scale(.96); }
+html:not(.ph) #main > .page-head > .ph-locate svg { width: 20px; height: 20px; }
+html:not(.ph) #main > .page-head > .ph-locate[hidden] { display: none; }
+body.np-open #main > .page-head > .ph-locate { display: none; }
+/* 正在播放：播放卡片的圆形封面 / 侧栏的音柱（app.js nowCardArt / nowBarsArt，2026-11-17 方案 D + E） */
+.now-cov { position: relative; display: grid; place-items: center; width: var(--s); height: var(--s); border-radius: 50%; overflow: hidden; flex: none;
+  background: linear-gradient(150deg, #4a566b, #1d2330); box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .14); color: #fff; }
+.now-cov img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.now-cov > svg { width: 44%; height: 44%; opacity: .5; }
+.now-cov:not(.none) > svg { display: none; }
+html:not([data-theme="dark"]) .now-cov.none { background: linear-gradient(150deg, #e6e8ec, #c9ced6); }
+html:not([data-theme="dark"]) .now-cov.none > svg { opacity: .85; }
+.now-bars { display: grid; place-items: center; width: var(--s); height: var(--s); border-radius: 50%; flex: none; background: rgba(60, 60, 66, .9); box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .1); color: #fff; }
+html:not([data-theme="dark"]) .now-bars { background: #e5e5ea; color: #1d1d1f; box-shadow: inset 0 0 0 .5px rgba(0, 0, 0, .06); }
+.now-bars .eq { height: 42%; gap: 2.5px; align-items: center; }
+.now-bars .eq i { width: 2.5px; height: 100%; transform-origin: 50% 50%; animation-play-state: paused; }
+body.is-playing.pb-min .now-bars .eq i { animation-play-state: running; }  /* 只有播放卡片收起来时侧栏的音柱才跳 */
+.pb-art > .now-cov, .pb-fab-art > .now-bars { width: 100%; height: 100%; }  /* 跟着外面那格的大小（侧栏 28 / 32、手机 40……） */
+
+/* ===== 2026-11-17 和播放有关的界面跟新播放页统一（docs/设计稿/播放相关统一方案_1117.html，用户确认 1–6） ===== */
+/* 没有封面：用户选的蓝色（和应用风格搭） */
+.now-cov.none { background: linear-gradient(140deg, #1e5aa8, #0c2a55 60%, #b9c9e6) !important; }
+.now-cov.none > svg { display: none; }
+
+/* 1 底部播放条（电脑）：左边播放控制，中间封面 + 标题 + 细进度条（融在条里，不加高亮框），右边音量 / 音效 / 播放列表 */
+html:not(.ph) .pbar { display: grid !important; grid-template-columns: auto minmax(0, 1fr) auto !important; grid-template-areas: "ctl lcd right"; column-gap: 22px; padding: 0 16px 0 14px; }
+html:not(.ph) .pbar .pb-center { display: contents; }
+html:not(.ph) .pbar .pb-ctl { grid-area: ctl; gap: 10px; }
+html:not(.ph) .pbar .pb-ctl [data-pb="back"], html:not(.ph) .pbar .pb-ctl [data-pb="fwd"] { display: none; }
+html:not(.ph) .pbar .pb-btn { width: 34px; height: 34px; color: var(--text); }
+html:not(.ph) .pbar .pb-btn svg { width: 22px; height: 22px; }
+html:not(.ph) .pbar .pb-btn.pb-sm { color: var(--text-2); } html:not(.ph) .pbar .pb-btn.pb-sm svg { width: 16px; height: 16px; }
+html:not(.ph) .pbar .pb-btn.pb-sm.on { color: var(--text); background: rgba(127, 127, 127, .18); }
+html:not(.ph) .pbar .pb-play { width: 38px; height: 38px; background: none !important; color: var(--text) !important; box-shadow: none !important; }
+html:not(.ph) .pbar .pb-play svg { width: 26px; height: 26px; }
+html:not(.ph) .pbar .pb-play:hover { background: rgba(127, 127, 127, .14) !important; transform: none; }
+html:not(.ph) .pbar .pb-now { grid-area: lcd; align-self: stretch; margin: 0; padding: 0 34px 0 0; border-radius: 0; background: none !important; gap: 10px; }
+html:not(.ph) .pbar .pb-now:hover .pb-title { text-decoration: underline; text-underline-offset: 2px; text-decoration-color: rgba(127, 127, 127, .5); }
+html:not(.ph) .pbar .pb-meta { align-self: start; margin-top: 9px; }
+html:not(.ph) .pbar .pb-title { font-size: 13px; font-weight: 600; }
+html:not(.ph) .pbar .pb-sub { font-size: 12px; }
+html:not(.ph) .pbar .pb-more { grid-area: lcd; justify-self: end; align-self: start; margin-top: 9px; width: 28px; height: 28px; color: var(--text-2); }
+html:not(.ph) .pbar .pb-more svg { width: 16px; height: 16px; }
+html:not(.ph) .pbar .pb-prog { grid-area: lcd; align-self: end; margin: 0 0 7px 50px; max-width: none; width: auto; gap: 8px; }
+html:not(.ph) .pbar .pb-t { min-width: 0; font-size: 10.5px; opacity: 0; transition: opacity .15s; }
+html:not(.ph) .pbar:hover .pb-t { opacity: 1; }
+html:not(.ph) .pbar .pb-track { height: 10px; }
+html:not(.ph) .pbar .pb-track::before, html:not(.ph) .pbar .pb-fill { height: 3px; margin-top: -1.5px; }
+html:not(.ph) .pbar .pb-fill, html:not(.ph) .pbar.playing .pb-fill { background: var(--text) !important; opacity: .85; }
+html:not(.ph) .pbar .pb-track:hover::before, html:not(.ph) .pbar .pb-track:hover .pb-fill, html:not(.ph) .pbar.drag .pb-track::before, html:not(.ph) .pbar.drag .pb-fill { height: 5px; margin-top: -2.5px; }
+html:not(.ph) .pbar .pb-right { grid-area: right; gap: 8px; }
+html:not(.ph) .pbar .pb-rate:not(.on) { display: none; }  /* 倍速在 ⋯ 里改；不是 1× 时才在右边显示一个小标记，点它照旧切换 */
+html:not(.ph) .pbar .pb-icon.on { color: var(--text); background: rgba(127, 127, 127, .18); }
+html.ph .pbar :is(#pb-shuffle, #pb-repeat, #pb-more) { display: none !important; }
+
+/* 2 播放列表面板：正在放 / 接下来播放两段；正在放的行浅灰底；拖动把手悬停才出现 */
+.ql-rows > .ql-row.on { margin-top: 26px; }
+.ql-rows > .ql-row.on, .ql-rows > .ql-row.on + .ql-row { content-visibility: visible; }  /* 上面的小标题画在行外面：这两行不做绘制裁剪 */
+.ql-rows > .ql-row.on::before, .ql-rows > .ql-row.on + .ql-row::before { position: absolute; left: 8px; top: -22px; font-size: 12px; font-weight: 600; color: var(--text-2); pointer-events: none; }
+.ql-rows > .ql-row.on::before { content: "正在播放"; }
+.ql-rows > .ql-row.on + .ql-row { margin-top: 26px; }
+.ql-rows > .ql-row.on + .ql-row::before { content: "接下来播放"; }
+.ql-row .ql-grip { opacity: 0; transition: opacity .15s; } .ql-row:hover .ql-grip, .ql-row.dragging .ql-grip { opacity: 1; }
+.ql-row.on, html[data-theme="dark"] .ql-row.on, .np-queue .ql-row.on { background: rgba(127, 127, 127, .16) !important; }
+.ql-row.on .ql-t, html[data-theme="dark"] .ql-row.on .ql-t { color: var(--text) !important; font-weight: 600; }
+.ql-row.on .ql-t .eq { display: none; }  /* 音柱只压在封面上，标题前不再重复 */
+.ql-mode svg { width: 16px; height: 16px; }
+
+/* 3 列表里正在播放的行：浅灰底、标题不变色；封面上暗色 + 白色音柱；键盘选中是细的内框 */
+.pl-row.on, body.vault .pl-row.on, html[data-theme="dark"] .pl-row.on, html[data-theme="dark"] body.vault .pl-row.on { background: rgba(127, 127, 127, .14) !important; }
+.pl-row.on .pl-t, body.vault .pl-row.on .pl-t, html[data-theme="dark"] .pl-row.on .pl-t, html[data-theme="dark"] body.vault .pl-row.on .pl-t { color: var(--text) !important; }
+.art-eq, html[data-theme="dark"] .art-eq { color: #fff !important; background: rgba(0, 0, 0, .45) !important; }
+.pl-row.kb { box-shadow: inset 0 0 0 1.5px rgba(127, 127, 127, .55) !important; }
+.pl-card.kb { background: rgba(127, 127, 127, .12) !important; }
+
+/* 5 手机迷你播放条：去掉底边的进度线，进度画在封面外圈的细环上 */
+html.ph .pbar .pb-prog { display: none !important; }
+html.ph #pbar .pb-art { padding: 2px; border-radius: 50% !important; background: conic-gradient(var(--text, #fff) var(--pbp, 0%), rgba(127, 127, 127, .25) 0); }
+
+/* 6 侧栏：转圈的环改成白色细环（浅色主题深灰） */
+.pb-fab.on .pb-fab-ring { border-color: transparent !important; border-top-color: rgba(255, 255, 255, .9) !important; border-right-color: rgba(255, 255, 255, .35) !important; border-width: 1.5px; }
+html:not([data-theme="dark"]) .pb-fab.on .pb-fab-ring { border-top-color: rgba(0, 0, 0, .75) !important; border-right-color: rgba(0, 0, 0, .25) !important; }
+
+/* 4 音效与声道：iOS 设置那样的分组卡片，行与行之间细分隔线；预设选中白底黑字（说明在名字的悬停提示里） */
+#spanel .sp-grp { background: rgba(127, 127, 127, .1); border-radius: 12px; padding: 0 12px; margin: 6px 0 4px; }
+#spanel .sp-grp > .sp-track, #spanel .sp-grp > .sp-fx { border: 0 !important; border-radius: 0 !important; background: none !important; margin: 0 !important; padding: 10px 0 !important; }
+#spanel .sp-grp > * + * { border-top: .5px solid rgba(127, 127, 127, .22) !important; }
+#spanel .sp-grp > .sp-add { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 8px; width: 100%; padding: 11px 0; cursor: pointer; font-size: 13px; color: var(--text-2); border-top: .5px solid rgba(127, 127, 127, .22); }
+#spanel .sp-grp > .sp-add:hover { color: var(--text); }
+#spanel .sp-grp > .sp-add svg { width: 15px; height: 15px; }
+#spanel .sp-fx-n[data-tip], #spanel .sec-label[data-tip], #spanel .ql-head b[data-tip] { cursor: help; }
+#spanel .sp-presets .chip { border: 0 !important; background: rgba(127, 127, 127, .14) !important; color: var(--text-2) !important; }
+#spanel .sp-presets .chip.on { background: var(--text) !important; color: var(--bg, #000) !important; font-weight: 500; }
+html[data-theme="dark"] #spanel .sp-presets .chip.on { background: #fff !important; color: #000 !important; }
+#spanel .sec-label { font-size: 12px; font-weight: 600; color: var(--text-2); margin: 12px 4px 2px; }
+
+/* ===== “播放”页 A：Apple Music 式歌曲表（2026-11-17 用户选 A + 二级文件夹方案 1 + 4，docs/设计稿/播放页A_子文件夹方案_1117.html） ===== */
+html:not(.ph) .main[data-page="play"] .play-grid { grid-template-columns: 250px minmax(0, 1fr); gap: 0; }
+html:not(.ph) .main[data-page="play"] .play-src.card { background: none !important; border: 0 !important; box-shadow: none !important; border-radius: 0; border-right: .5px solid var(--line) !important; padding: 2px 14px 10px 0; }
+html:not(.ph) .main[data-page="play"] .play-list.card { background: none !important; border: 0 !important; box-shadow: none !important; border-radius: 0; padding: 0 0 0 28px; }
+/* 左边：中性灰的选中，不再是紫 / 蓝 */
+.main[data-page="play"] .ps-item { font-size: 13.5px; padding: 6px 10px; border-radius: 7px; }
+.main[data-page="play"] .ps-item.on, html[data-theme="dark"] .main[data-page="play"] .ps-item.on, .main[data-page="play"] body.vault .ps-item.on { background: rgba(127, 127, 127, .18) !important; color: var(--text) !important; font-weight: 600; }
+.main[data-page="play"] .ps-item:hover { background: rgba(127, 127, 127, .08); }
+.main[data-page="play"] .ps-ic svg { color: var(--text-2); }
+/* 标题区：大标题 + 播放（白底黑字 / 浅色黑底白字）+ 随机播放 */
+html:not(.ph) .main[data-page="play"] .pl-head .card-title { font-size: 26px; letter-spacing: -.01em; line-height: 1.2; }
+html:not(.ph) .main[data-page="play"] .pl-head .tiny { font-size: 12.5px; margin-top: 2px; }
+.main[data-page="play"] #pl-all.btn.primary { background: var(--text) !important; color: var(--bg, #000) !important; border: 0; }
+html[data-theme="dark"] .main[data-page="play"] #pl-all.btn.primary { background: #fff !important; color: #000 !important; }
+.main[data-page="play"] #pl-shuf { background: rgba(127, 127, 127, .18); border: 0; color: var(--text); }
+.main[data-page="play"] #pl-shuf svg { width: 14px; height: 14px; }
+/* 歌曲表：每行 44px、细分隔线；标题和文件夹分两列；序号悬停变播放键 */
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-row { min-height: 44px; padding: 0 8px; border-radius: 7px; gap: 12px; grid-template-columns: 34px 32px minmax(0, 1fr) auto auto auto; box-shadow: inset 0 -.5px 0 var(--line); }
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-row .art { --s: 32px !important; border-radius: 5px; }
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-main { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px; align-items: center; }
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-t { font-size: 13.5px; }
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-s { margin: 0; font-size: 13px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-m { font-size: 12.5px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-n { text-align: right; padding-right: 4px; }
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-row[data-i]:hover .pl-n { font-size: 0; }
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-row[data-i]:hover .pl-n::before { content: ""; display: inline-block; width: 10px; height: 11px; background: var(--text); clip-path: polygon(8% 0, 100% 50%, 8% 100%); }
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-row.on .pl-t { font-weight: 600; }
+/* 按子文件夹分组的小标题：相对路径 · 数量 · 只播这一段 */
+.main[data-page="play"] .sec-label.pl-grp { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--text); text-transform: none; letter-spacing: 0; }
+.main[data-page="play"] .pl-grp .pl-gc { color: var(--text-3); font-weight: 400; }
+.main[data-page="play"] .pl-grp .pl-gplay { all: unset; cursor: pointer; width: 24px; height: 24px; border-radius: 12px; display: grid; place-items: center; color: var(--text-2); margin-left: 2px; }
+.main[data-page="play"] .pl-grp .pl-gplay:hover { background: rgba(127, 127, 127, .16); color: var(--text); }
+.main[data-page="play"] .pl-grp .pl-gplay svg { width: 12px; height: 12px; }
+
+/* ===== “播放”页 A 第二轮（2026-11-17 用户：照 HTML 做到几乎一样——搜索框在左栏顶部、去掉返回键、排序按钮无底无箭头、表头、路径在大标题上面、分组可折叠） ===== */
+html:not(.ph) .main[data-page="play"] > .page-head.pl-nohead { height: 0; min-height: 0; margin: 0 !important; padding: 0 !important; border: 0; overflow: visible; }
+html:not(.ph) .main[data-page="play"] > .page-head.pl-nohead > :not(.ph-locate) { display: none !important; }
+html:not(.ph) .main[data-page="play"] .play-grid { grid-template-columns: 230px minmax(0, 1fr); gap: 0; align-items: stretch; }
+html:not(.ph) .main[data-page="play"] .play-side { position: sticky; top: 14px; align-self: start; display: flex; flex-direction: column; max-height: calc(100vh - 118px); border-right: .5px solid var(--line); padding: 4px 10px 10px 0; }
+html:not(.ph) .main[data-page="play"] .play-side .play-src.card { position: static; max-height: none; flex: 1; min-height: 0; overflow: auto; border-right: 0 !important; padding: 0; }
+html:not(.ph) .main[data-page="play"] .ps-search { width: auto !important; margin: 0 4px 6px; }
+html:not(.ph) .main[data-page="play"] .ps-search .play-search { width: 100%; }
+html:not(.ph) .main[data-page="play"] .ps-search .input { height: 30px; border-radius: 8px; border: 0; background: rgba(127, 127, 127, .14); font-size: 12.5px; padding-left: 30px; box-shadow: none; }
+html:not(.ph) .main[data-page="play"] .ps-search .play-search > span:first-child { left: 10px; }
+html:not(.ph) .main[data-page="play"] .ps-search svg { width: 13px; height: 13px; }
+html:not(.ph) .main[data-page="play"] .ps-kind { margin: 4px 4px 2px; }
+html:not(.ph) .main[data-page="play"] .ps-kind button { font-size: 12px; }
+html:not(.ph) .main[data-page="play"] .ps-head { margin: 12px 4px 4px 10px; }
+html:not(.ph) .main[data-page="play"] .ps-head .sec-label { font-size: 11px; font-weight: 600; color: var(--text-3); letter-spacing: 0; text-transform: none; }
+html:not(.ph) .main[data-page="play"] .ps-item { min-height: 30px; padding: 5px 10px; gap: 8px; font-size: 13px; border-radius: 7px; }
+html:not(.ph) .main[data-page="play"] .ps-item .ps-ic svg { width: 15px; height: 15px; }
+html:not(.ph) .main[data-page="play"] .ps-item .ps-n { font-size: 11px; color: var(--text-3); font-weight: 400; }
+/* 右边 */
+html:not(.ph) .main[data-page="play"] .play-list.card { padding: 0 0 0 28px; }
+html:not(.ph) .main[data-page="play"] .pl-crumbs { display: flex; align-items: center; gap: 4px; padding-top: 20px; font-size: 12.5px; color: var(--text-2); }
+html:not(.ph) .main[data-page="play"] .pl-crumbs .crumb { all: unset; cursor: pointer; border-radius: 5px; padding: 0 3px; margin: 0 -3px; }
+html:not(.ph) .main[data-page="play"] .pl-crumbs .crumb:hover { color: var(--text); background: rgba(127, 127, 127, .12); }
+html:not(.ph) .main[data-page="play"] .pl-crumbs .crumb-sep { display: grid; color: var(--text-3); } html:not(.ph) .main[data-page="play"] .pl-crumbs .crumb-sep svg { width: 11px; height: 11px; }
+html:not(.ph) .main[data-page="play"] .pl-crumbs b { color: var(--text); font-weight: 500; }
+html:not(.ph) .main[data-page="play"] .pl-head { align-items: flex-end; padding: 8px 0 12px; margin: 0; gap: 8px; }
+html:not(.ph) .main[data-page="play"] .pl-crumbs + .pl-head { padding-top: 6px; }
+html:not(.ph) .main[data-page="play"] .pl-crumbs:not(*) + .pl-head, html:not(.ph) .main[data-page="play"] .play-list > .pl-head:first-child { padding-top: 28px; }
+html:not(.ph) .main[data-page="play"] .pl-back { display: none !important; }
+html:not(.ph) .main[data-page="play"] .pl-opts { background: none !important; height: 32px; padding: 0 10px; border-radius: 8px; color: var(--text-2); font-size: 13px; }
+html:not(.ph) .main[data-page="play"] .pl-opts:hover, html:not(.ph) .main[data-page="play"] .pl-opts.open { background: rgba(127, 127, 127, .12) !important; color: var(--text); }
+html:not(.ph) .main[data-page="play"] .pl-opts > svg:last-child { display: none; }  /* 不要下拉箭头：悬停高亮就知道能点 */
+html:not(.ph) .main[data-page="play"] .pl-opts > svg:first-child { width: 14px; height: 14px; }
+html:not(.ph) .main[data-page="play"] :is(#pl-all, #pl-shuf) { height: 32px; padding: 0 15px; border-radius: 8px; font-size: 13px; font-weight: 600; gap: 7px; }
+html:not(.ph) .main[data-page="play"] #pl-all svg { width: 13px; height: 13px; }
+/* 表头 + 行：同一套列（序号 34 · 封面 32 · 标题 / 文件夹 · 收藏 28 · 大小 64）；悬停的那几个操作按钮浮在文件夹那一列的右边 */
+html:not(.ph) .main[data-page="play"] .pl-thead { display: grid; grid-template-columns: 34px 32px minmax(0, 1fr) 28px 64px; gap: 12px; align-items: center; padding: 6px 8px; font-size: 11.5px; color: var(--text-3); border-bottom: .5px solid var(--line); }
+html:not(.ph) .main[data-page="play"] .pl-thead .pl-n { text-align: right; padding-right: 4px; font-size: 11.5px; }
+html:not(.ph) .main[data-page="play"] .pl-thead .pl-th2 { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px; }
+html:not(.ph) .main[data-page="play"] .pl-thead .pl-m { text-align: right; }
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-row { position: relative; grid-template-columns: 34px 32px minmax(0, 1fr) 28px 64px; min-height: 42px; }
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-row .pl-acts { position: absolute; right: calc(8px + 64px + 12px + 28px + 12px); top: 50%; transform: translateY(-50%); padding-left: 18px; background: linear-gradient(90deg, transparent, var(--bg, #0b0b0d) 18px); }
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-row:is(:hover, .on) .pl-acts { background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--bg, #0b0b0d) 86%, #808080) 18px); }
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-row .fav-btn { width: 28px; height: 28px; }
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-m { width: 64px; text-align: right; }
+html:not(.ph) .main[data-page="play"] .pl-rows .pill { font-size: 10.5px; padding: 1px 6px; }
+/* 分组小标题：可折叠 */
+.main[data-page="play"] .pl-grp .pl-gtog { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; padding: 2px 6px 2px 2px; margin-left: -2px; }
+.main[data-page="play"] .pl-grp .pl-gtog:hover { background: rgba(127, 127, 127, .12); }
+.main[data-page="play"] .pl-grp .pl-gch { display: grid; color: var(--text-3); transition: transform .18s; } .main[data-page="play"] .pl-grp .pl-gch svg { width: 11px; height: 11px; }
+.main[data-page="play"] .pl-grp .pl-gtog.open .pl-gch { transform: rotate(90deg); }
+/* 未在播放时的播放条（2026-11-17 用户：排版很怪）：只留暗下去的播放键、一个空的圆形封面位和“未在播放”，进度条、时间、⋯ 都不显示 */
+html:not(.ph) .pbar.idle .pb-prog, html:not(.ph) .pbar.idle #pb-more { display: none !important; }
+html:not(.ph) .pbar.idle .pb-meta { align-self: center; margin-top: 0; }
+html:not(.ph) .pbar.idle .pb-title { font-size: 13px; font-weight: 500; color: var(--text-3); }
+html:not(.ph) .pbar.idle .pb-art:empty { border-radius: 50%; background: rgba(127, 127, 127, .14); }
+html:not(.ph) .pbar.idle .pb-art:empty::before { font-size: 15px; color: var(--text-3); }
+html:not(.ph) .pbar.idle .pb-play { opacity: .3; }
+html:not(.ph) .pbar.idle .pb-right .pb-icon, html:not(.ph) .pbar.idle .pb-right #vol-btn { opacity: .55; }
+/* 类型筛选（电脑，2026-11-17）：“资料库”那行右边的小图标，悬停才有底色；筛了某一类时前面写类型名、强调色 */
+html:not(.ph) .main[data-page="play"] .pl-kind { all: unset; display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 5px; border-radius: 6px; cursor: pointer; color: var(--text-3); font-size: 11.5px; font-weight: 600; }
+html:not(.ph) .main[data-page="play"] .pl-kind:hover, html:not(.ph) .main[data-page="play"] .pl-kind.open { background: rgba(127, 127, 127, .14); color: var(--text); }
+html:not(.ph) .main[data-page="play"] .pl-kind:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+html:not(.ph) .main[data-page="play"] .pl-kind svg { width: 13px; height: 13px; }
+html:not(.ph) .main[data-page="play"] .pl-kind.on { color: var(--blue); }
+/* 展开导航的按钮（2026-11-17 用户：基本不用）：导航栏上不显示，开关在设置页“展开导航栏” */
+#rail-tog { display: none !important; }
+/* 去掉分栏外框（2026-11-17 用户：素材库、配音等页面不要用框框住分栏）——和播放页一样：没有底色卡片，主栏和右栏之间一条细线；只在电脑上 */
+html:not(.ph) .main:is([data-page="tts"], [data-page="vc"], [data-page="stt"], [data-page="audioedit"], [data-page="batch"]) .stack > .card,
+html:not(.ph) .main[data-page="vc"] .vc-src-card { background: none !important; box-shadow: none !important; border-radius: 0; padding: 4px 0 0; }
+html:not(.ph) .main:is([data-page="tts"], [data-page="stt"], [data-page="audioedit"], [data-page="batch"]) :is(.side-col > .card, .rec-card) { background: none !important; box-shadow: none !important; border-radius: 0; border-left: .5px solid var(--line) !important; padding: 4px 0 4px 24px; }
+html:not(.ph) .main[data-page="vc"] .vc-out { border-top: .5px solid var(--line) !important; padding-top: 22px; }
+html:not(.ph) .main[data-page="mats"] .gal-page.card { background: none !important; box-shadow: none !important; border-radius: 0; padding: 0; }
+html:not(.ph) .main:is([data-page="tts"], [data-page="stt"], [data-page="audioedit"], [data-page="batch"]) .side-col { background: none !important; box-shadow: none !important; border: 0 !important; }
+
+/* ===== “播放”页随窗口缩放（2026-11-17 用户：左栏离导航栏太远、字太小、全屏时太靠上、左栏滚动条挤窄列表） =====
+   不再限制 1600px 居中（全屏时左栏被推到中间），铺满；左右留白、左栏宽度、字号、行高、顶部留白都按窗口大小在一个范围里变：
+   --pf 基准字号 13px（1440 宽）→ 15px（2560 宽）；--ptop 顶部留白 跟窗口高度 */
+html:not(.ph) .main[data-page="play"] { --pf: clamp(13px, calc(10px + .22vw), 15px); --ptop: clamp(12px, calc(4vh - 16px), 44px);
+  padding-left: clamp(14px, calc(2.2vw - 14px), 44px) !important; padding-right: clamp(16px, calc(2.2vw - 10px), 48px) !important; }
+html:not(.ph) .main[data-page="play"] > * { max-width: none !important; }
+html:not(.ph) .main[data-page="play"] .play-grid { grid-template-columns: clamp(220px, calc(120px + 8vw), 300px) minmax(0, 1fr); }
+html:not(.ph) .main[data-page="play"] .play-side { top: 0; padding-top: var(--ptop); max-height: calc(100vh - 104px); }
+html:not(.ph) .main[data-page="play"] .play-side .play-src.card { scrollbar-width: none; }  /* 文件夹多了也不出滚动条（滚轮照样能滚），不挤窄列表 */
+html:not(.ph) .main[data-page="play"] .play-side .play-src.card::-webkit-scrollbar { display: none; }
+html:not(.ph) .main[data-page="play"] .ps-search .input { height: calc(var(--pf) * 2.4); font-size: calc(var(--pf) * .97); padding-left: calc(var(--pf) * 2.3); }
+html:not(.ph) .main[data-page="play"] .ps-search svg { width: var(--pf); height: var(--pf); }
+html:not(.ph) .main[data-page="play"] .ps-head { margin-top: calc(var(--pf) * 1); }
+html:not(.ph) .main[data-page="play"] .ps-head .sec-label, html:not(.ph) .main[data-page="play"] .pl-kind { font-size: calc(var(--pf) * .86); }
+html:not(.ph) .main[data-page="play"] .ps-item { min-height: calc(var(--pf) * 2.4); font-size: var(--pf); gap: calc(var(--pf) * .62); }
+html:not(.ph) .main[data-page="play"] .ps-item .ps-ic svg { width: calc(var(--pf) * 1.15); height: calc(var(--pf) * 1.15); }
+html:not(.ph) .main[data-page="play"] .ps-item .ps-n { font-size: calc(var(--pf) * .85); }
+html:not(.ph) .main[data-page="play"] .play-list.card { padding-left: clamp(22px, calc(1.6vw + 4px), 44px); }
+html:not(.ph) .main[data-page="play"] .pl-crumbs { padding-top: calc(var(--ptop) + 4px); font-size: calc(var(--pf) * .96); }
+html:not(.ph) .main[data-page="play"] .pl-crumbs:not(*) + .pl-head, html:not(.ph) .main[data-page="play"] .play-list > .pl-head:first-child { padding-top: calc(var(--ptop) + 12px); }
+html:not(.ph) .main[data-page="play"] .pl-head .card-title { font-size: clamp(26px, calc(12px + 1vw), 36px); }
+html:not(.ph) .main[data-page="play"] .pl-head .tiny { font-size: calc(var(--pf) * .96); }
+html:not(.ph) .main[data-page="play"] :is(#pl-all, #pl-shuf, .pl-opts) { height: calc(var(--pf) * 2.45); font-size: var(--pf); }
+html:not(.ph) .main[data-page="play"] .pl-thead, html:not(.ph) .main[data-page="play"] .pl-thead .pl-n { font-size: calc(var(--pf) * .88); }
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-row { min-height: calc(var(--pf) * 3.25); }
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-t { font-size: calc(var(--pf) * 1.04); }
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-s { font-size: var(--pf); }
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-m, html:not(.ph) .main[data-page="play"] .pl-rows .pl-n { font-size: calc(var(--pf) * .96); }
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-row .art { --s: calc(var(--pf) * 2.45) !important; }
+html:not(.ph) .main[data-page="play"] .sec-label.pl-grp { font-size: var(--pf); }
+
+/* 歌曲表加“作者”“时长”两列（2026-11-17 用户：作者、时长、大小都放上去）：标题 · 作者 · 文件夹 · 收藏 · 时长 · 大小；手机不显示 */
+.pl-row .pl-a, .pl-row .pl-d, .pl-thead .pl-d { display: none; }
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-row .pl-a { display: block; }
+html:not(.ph) .main[data-page="play"] :is(.pl-rows .pl-row, .pl-thead) .pl-d { display: block; text-align: right; font-variant-numeric: tabular-nums; }
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-row .pl-a { font-size: var(--pf); color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-row .pl-d { font-size: calc(var(--pf) * .96); color: var(--text-2); }
+html:not(.ph) .main[data-page="play"] :is(.pl-rows .pl-main, .pl-thead .pl-th2) { grid-template-columns: minmax(0, 1.5fr) minmax(0, .8fr) minmax(0, 1fr); }
+html:not(.ph) .main[data-page="play"] :is(.pl-rows .pl-row, .pl-thead) { grid-template-columns: 34px calc(var(--pf) * 2.45) minmax(0, 1fr) 28px 56px 72px; }
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-m { width: 72px; }
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-row .pl-acts { right: calc(8px + 72px + 12px + 56px + 12px + 28px + 12px); }
+
+/* 歌曲表的高亮（2026-11-17 用户：高亮逻辑有问题——点过的行有描边、正在播的行有灰底、鼠标那行也有底，同时三行亮）。
+   照 Spotify / Apple Music：悬停 = 很淡的底；选中（只在用键盘上下移动时）= 实一点的底、不描边；
+   正在播放 = 不加底，序号换成音柱（暂停时停住）、标题加粗，封面不再盖音柱 */
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-row.on:not(.kb):not(:hover) { background: transparent !important; }
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-row:hover { background: rgba(127, 127, 127, .09) !important; }
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-row.kb { background: rgba(127, 127, 127, .2) !important; box-shadow: inset 0 -.5px 0 var(--line) !important; }
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-row .art-eq { display: none; }
+.pl-row .pl-eq { display: none; }
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-row.on .pl-n em { display: none; }
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-row.on .pl-eq { display: inline-flex; height: 12px; color: var(--text); vertical-align: middle; }
+body:not(.is-playing) .pl-row .pl-eq i { animation-play-state: paused; }
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-row.on[data-i]:hover .pl-n { font-size: inherit; }
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-row.on[data-i]:hover .pl-n::before { content: none; }
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-row .pl-n em { font-style: normal; }
+/* 悬停时的操作按钮：不要自己的一块底（看着像个框），改成把下面那列文件夹名藏起来 */
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-row .pl-acts, html:not(.ph) .main[data-page="play"] .pl-rows .pl-row:is(:hover, .on) .pl-acts { background: none !important; }
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-row:hover .pl-s { visibility: hidden; }
+/* 单击选中、双击播放：行上普通箭头、不选中文字；序号位置的 ▶ 是手形 */
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-row[data-i] { cursor: default; user-select: none; -webkit-user-select: none; }
+html:not(.ph) .main[data-page="play"] .pl-rows .pl-row[data-i] .pl-n { cursor: pointer; }
+
+/* ===== 导航顶对齐 + 播放页左栏标题（2026-11-18 用户选方案 B，docs/设计稿/播放页左上角方案_1117.html） =====
+   导航按钮不再竖直居中，紧跟 logo 往下排（Windows 11 NavigationView / Teams / VS Code 的做法），底部按钮不动；
+   播放页左栏最上面写“播放”，和 logo 同一行；第一个导航按钮和左栏的“资料库”大致同一高度 */
+@media (min-width: 761px) {
+  .rnav { justify-content: flex-start !important; padding-bottom: 0 !important; margin-top: var(--rnav-top, 30px) !important; }
+  html.rail-wide .rnav { margin-top: var(--rnav-top, 30px) !important; }
+  .rail { padding-top: var(--rail-pt, 16px) !important; }  /* 两个数在播放页里量出来（app.js railAlign） */
+}
+html:not(.ph) .main[data-page="play"] { --pl-top: clamp(16px, calc(2.2vh - 4px), 32px); }  /* 顶部起始线：窗口越高离顶越远（2560×1440 时和方案页一样，标题中心约 46px） */
+html:not(.ph) .main[data-page="play"] .play-side { padding-top: var(--pl-top); }
+html:not(.ph) .main[data-page="play"] .ps-title { margin: 0; padding: 0 8px; height: 36px; display: flex; align-items: center; font-size: clamp(22px, calc(10px + .78vw), 30px); font-weight: 700; letter-spacing: -.01em; line-height: 1; flex: none; }
+html:not(.ph) .main[data-page="play"] .ps-search { margin-top: 10px; }
+html:not(.ph) .main[data-page="play"] .pl-crumbs { padding-top: calc(var(--pl-top) + 9px); min-height: 18px; }
+html:not(.ph) .main[data-page="play"] .pl-crumbs:not(*) + .pl-head, html:not(.ph) .main[data-page="play"] .play-list > .pl-head:first-child { padding-top: calc(var(--pl-top) + 31px); }
+/* 应用窗口：整页照旧让出顶上 34px 的拖动条（2026-11-18 用户：整体往下移、页面里相对位置对就行），导航栏的上边距由 railAlign 量出来跟着下移 */
+
+/* ===== 播放页左栏照 ChatGPT 侧栏的疏密（2026-11-18 用户：文件列表还差点什么，参考那张截图的间隔） =====
+   行高、字号大一点；分区标题（资料库、音源库）和条目差不多大、灰色，上面留一大段空；文件夹不再单独一列小箭头，
+   用合上 / 打开的文件夹图标表示收起 / 展开（点图标收起 / 展开，点名字选中），所有名字左边对齐；下一层缩进到上一层名字的位置 */
+html:not(.ph) .main[data-page="play"] .ps-item { min-height: calc(var(--pf) * 2.65); font-size: calc(var(--pf) * 1.04); gap: calc(var(--pf) * .72); padding: 0 10px; }
+html:not(.ph) .main[data-page="play"] .ps-item .ps-ic svg { width: calc(var(--pf) * 1.2); height: calc(var(--pf) * 1.2); }
+html:not(.ph) .main[data-page="play"] .ps-item .ps-n { font-size: calc(var(--pf) * .86); }
+html:not(.ph) .main[data-page="play"] .ps-head { margin: calc(var(--pf) * 1.55) 4px calc(var(--pf) * .3) 10px; }
+html:not(.ph) .main[data-page="play"] .ps-head.ps-lib { margin-top: calc(var(--pf) * .9); }
+html:not(.ph) .main[data-page="play"] .ps-head .sec-label { font-size: calc(var(--pf) * .95); font-weight: 600; color: var(--text-3); }
+html:not(.ph) .main[data-page="play"] .ps-dir { padding-left: calc(10px + var(--depth, 0) * var(--pf) * 1.92); }
+html:not(.ph) .main[data-page="play"] .ps-tog-ic { cursor: pointer; border-radius: 5px; display: grid; place-items: center; }
+html:not(.ph) .main[data-page="play"] .ps-tog-ic:hover { color: var(--text); }
+html:not(.ph) .main[data-page="play"] .ps-tog-ic:hover svg { color: var(--text); }
+/* 选中项的滑块（glide.js）要跟着左栏一起滚、被左栏裁掉（以前跑到左栏下面，露出一块灰条） */
+html:not(.ph) .main[data-page="play"] .play-side .play-src.card { position: relative; }
+/* 歌曲表随列表宽度少显示几列（窄窗口时标题被挤成几个字）：窄 → 不显示作者、文件夹；再窄 → 也不显示大小 */
+html:not(.ph) .main[data-page="play"] #play-list { container-type: inline-size; container-name: pl; }
+@container pl (max-width: 760px) {
+  .pl-rows .pl-row .pl-a, .pl-rows .pl-row .pl-s, .pl-thead .pl-th2 > span:not(:first-child) { display: none !important; }
+  .pl-rows .pl-main, .pl-thead .pl-th2 { grid-template-columns: minmax(0, 1fr) !important; }
+}
+@container pl (max-width: 520px) {
+  .pl-rows .pl-row .pl-m, .pl-thead .pl-m { display: none !important; }
+  .pl-rows .pl-row, .pl-thead { grid-template-columns: 30px calc(var(--pf) * 2.45) minmax(0, 1fr) 28px 48px !important; gap: 10px !important; }
+  .pl-rows .pl-row .pl-acts { right: calc(8px + 48px + 10px + 28px + 10px) !important; }
+}
+/* 新 logo（2026-11-18 用户的 StudioLogo，描成无背景矢量 web/logo.svg）：蓝色渐变的 S，不跟深浅色变色，比原来的音符略大 */
+.rail .brand-note { width: 26px; height: 26px; }
+/* 左栏：有子文件夹的在名字右边一个小箭头（2026-11-18 用户：看不出哪些文件夹还有子文件夹；参考 ChatGPT 侧栏“Mac ›”），展开时转向下；点箭头展开 / 收起 */
+html:not(.ph) .main[data-page="play"] .ps-item .ps-name { flex: 0 1 auto; }
+html:not(.ph) .main[data-page="play"] .ps-item .ps-n { margin-left: auto; padding-left: 8px; }
+html:not(.ph) .main[data-page="play"] .ps-chv { flex: none; width: 20px; height: 20px; margin-left: -4px; border-radius: 5px; display: grid; place-items: center; color: var(--text-3); cursor: pointer; }
+html:not(.ph) .main[data-page="play"] .ps-chv svg { width: 11px; height: 11px; transition: transform .2s cubic-bezier(.2, .8, .2, 1); }
+html:not(.ph) .main[data-page="play"] .ps-chv.open svg { transform: rotate(90deg); }
+html:not(.ph) .main[data-page="play"] .ps-chv:hover { background: rgba(127, 127, 127, .16); color: var(--text); }
+.pl-quiet .pl-rows > *, .pl-quiet .pl-head, .pl-quiet .pl-thead { animation: none !important; }  /* 收起 / 展开分组：安静重画 */
+html:not(.ph) .main[data-page="play"] .pl-gall { padding: 0 9px; }
+html:not(.ph) .main[data-page="play"] .pl-gall > svg:last-child { display: block; width: 15px; height: 15px; }
+/* 播放条收起时左栏不再给它留出底部 104px（2026-11-18 全量检查：矮窗口里左栏只能滚 26–46px 的“没用的小滚动”） */
+body.pb-min html:not(.ph) .main[data-page="play"] .play-side, html:not(.ph) body.pb-min .main[data-page="play"] .play-side { max-height: calc(100vh - 24px); }
+html:not(.ph) body.in-app.pb-min:not(.compact):not(.app-fs) .main[data-page="play"] .play-side { max-height: calc(100vh - 58px); }
+/* 很矮的窗口（手机横屏 956×440 等，2026-11-18 全量检查：导航按钮和底部的播放器圆钮、设置挤在一起）：不加对齐用的上边距、按钮挨紧一点；还放不下时导航栏自己能滚 */
+@media (min-width: 761px) and (max-height: 620px) {
+  .rnav, html.rail-wide .rnav { margin-top: 2px !important; gap: 2px !important; }
+  .rail { padding-top: 10px !important; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; }
+  .rail::-webkit-scrollbar { display: none; }
+  .rail .brand { margin-bottom: 2px; }
+}
+/* 触屏（iPad 等）：类型筛选小图标的点按区域至少 40×36（2026-11-18 全量检查：只有 23×22） */
+@media (pointer: coarse) { html:not(.ph) .main[data-page="play"] .pl-kind { min-width: 40px; height: 36px; justify-content: center; margin: -7px -8px -7px 0; } }
+/* 导航栏上展开的播放器（2026-11-18 用户：导航按钮顶对齐以后它把页面按钮全盖住了）：照 Arc 浏览器侧栏底部的小播放控制，
+   收起的导航栏里只留 播放 / 暂停、音量、播放列表 三个；随机、上下首、循环、音效、⋯ 在播放列表和播放页里 */
+@media (min-width: 761px) {
+  html:not(.rail-wide) body:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) .pbar :is(#pb-shuffle, [data-pb="prev"], [data-pb="next"], #pb-repeat, #pb-more, #pb-fx, #pb-rc, #pb-hide) { display: none !important; }
+  html:not(.rail-wide) body:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) .pbar .vol-ctl { display: inline-flex !important; }
+  html:not(.rail-wide) body:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) .pbar { padding: 8px 4px 46px !important; gap: 2px !important; }  /* 底下留出播放器圆钮（#pb-fab）的位置 */
+}
+/* 窗口矮（≤ 820）时竖着放不下三个按钮：改成从圆钮右边弹出的一小条（横排），不挡导航按钮 */
+@media (min-width: 761px) and (max-height: 820px) {
+  html:not(.rail-wide) body:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) .pbar {
+    flex-direction: row !important; left: calc(var(--rail-w) - 4px) !important; width: auto !important; bottom: calc(var(--fab-b, 112px) - 6px) !important; height: 48px !important; min-height: 0 !important;
+    padding: 5px 10px !important; gap: 4px !important; border-radius: 24px !important; animation: pbRailX .24s cubic-bezier(.32, .72, 0, 1); }
+  html:not(.rail-wide) body:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) .pbar :is(.pb-ctl, .pb-right) { flex-direction: row !important; gap: 4px !important; }
+  html:not(.rail-wide) body:not(.pb-min):not(.compact):not(.app-fs):has(#main:not(:is([data-page="play"], [data-page="tts"], [data-page="vc"], [data-page="audioedit"]))) .pbar .pb-now { display: none !important; }
+  @keyframes pbRailX { from { opacity: 0; transform: translateX(-10px) scale(.96); } to { opacity: 1; transform: none; } }
+}
+
+/* 全屏播放页的歌词（2026-11-18 用户：高亮不好看、总感觉有延迟）：照 Apple Music——当前那句不要整行的底框，纯白 + 略微放大，别的句子暗；
+   变成当前句时颜色 0.2 秒就到（以前 0.45 秒，看着慢半拍），离开时慢慢暗下去 */
+html:not(.ph) .np .lyrics .sub.on, html:not(.ph) .np .lyrics .para .sub.on { background: transparent !important; box-shadow: none !important; }
+html:not(.ph) .np .lyrics .subs:not(.para-mode) > .sub.on { transform: scale(1.03); transform-origin: left center; transition: color .2s, transform .35s cubic-bezier(.22, 1, .36, 1), filter .2s; }
+html:not(.ph) .np .lyrics .sub:not(.on):hover { background: rgba(255, 255, 255, .05); }
+.ctx-menu .ctx-hint { font-size: 11.5px; color: var(--text-3); margin-left: 18px; }  /* 菜单项右边的快捷键 */
+.ctx-menu { max-height: min(600px, calc(100vh - 24px)); }  /* 全屏播放页的 ⋯ / 字幕右键菜单比较长（11-18）：放得下就不出滚动条 */
+.ctx-menu .ctx-hint { white-space: nowrap; }
+/* 播放页：列表底部留出播放条盖住的那一截（--pb-cover，pbLayout 量出来），滚到底最后一行不被挡 */
+html:not(.ph) .main[data-page="play"] .pl-rows { padding-bottom: var(--pb-cover, 0px); scroll-padding-bottom: var(--pb-cover, 0px); }
+/* 未在播放（2026-11-18 用户：为什么还要左边的播放按钮）：播放 / 上下首这组整个不显示 */
+html:not(.ph) .pbar.idle .pb-ctl { display: none !important; }
+html:not(.ph) .pbar.idle .pb-now { margin-left: 4px; }
+
+/* 作者列默认不显示（设置里可以打开）：标题 · 文件夹 两列 */
+html:not(.ph) .main[data-page="play"] .pl-noauthor :is(.pl-rows .pl-main, .pl-thead .pl-th2) { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
+html:not(.ph) .main[data-page="play"] .pl-noauthor .pl-rows .pl-row .pl-a, html:not(.ph) .main[data-page="play"] .pl-noauthor .pl-thead .pl-th2 > span:nth-child(2) { display: none !important; }
+/* 表头和行对齐（2026-11-18 用户：作者、大小、时长没对齐）：列表右边有滚动条，表头右边补上同样宽的留白（--sbw，drawList 量出来） */
+html:not(.ph) .main[data-page="play"] .pl-thead { padding-right: calc(8px + var(--sbw, 0px)); }
+/* 叠加音轨的进度条（2026-11-18 用户：要能调叠加音轨的进度） */
+#spanel .sp-seek { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+#spanel .sp-seek input[type=range] { flex: 1; min-width: 0; }
+#spanel .sp-seek .sp-st { flex: none; min-width: 84px; text-align: right; font-variant-numeric: tabular-nums; font-size: 11.5px; color: var(--text-3); }
+/* 正在生成字幕（2026-11-18 用户：要进度、能取消）：一行字 + 百分比，一条细进度条，下面“取消” */
+.np .np-genning { display: flex; flex-direction: column; align-items: stretch; gap: 10px; width: min(280px, 80%); margin: auto; }
+.np .np-genning .np-gl { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
+.np .np-genning .np-gpc { font-variant-numeric: tabular-nums; opacity: .6; }
+.np .np-genning .np-gbar { height: 3px; border-radius: 2px; background: rgba(255, 255, 255, .16); overflow: hidden; }
+.np .np-genning .np-gbar i { display: block; height: 100%; border-radius: inherit; background: currentColor; transition: width 1s linear; }
+.np .np-genning .np-gcancel { all: unset; cursor: pointer; align-self: center; margin-top: 4px; padding: 4px 12px; font-size: 13px; opacity: .6; }
+.np .np-genning .np-gcancel:hover { opacity: 1; }
+.np.npl-light .np-genning .np-gbar { background: rgba(0, 0, 0, .12); }
+/* 右键菜单的二级菜单（2026-11-18）：展开着的那一项保持高亮，右边一个小箭头 */
+.ctx-menu .ctx-i.sub-open { background: rgba(0, 0, 0, .055); }
+html[data-theme="dark"] .ctx-menu .ctx-i.sub-open { background: rgba(255, 255, 255, .08); }
+.ctx-menu .ctx-subk { display: grid; width: auto; padding-left: 12px; color: inherit; opacity: .45; }
+.ctx-menu .ctx-subk svg { width: 14px; height: 14px; flex: none; }
+/* 书签（2026-11-18）：进度条上的小点，平时不显眼（小、半透明），移上去变大变亮；点的范围比看到的大 */
+.mk-box { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+.mk-box .mk { position: absolute; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; pointer-events: auto; cursor: pointer; }
+.mk-box .mk::after { content: ""; position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; background: currentColor; opacity: .55; box-shadow: 0 0 0 1.5px rgba(0, 0, 0, .25); transition: transform .15s, opacity .15s; }
+.mk-box .mk:hover::after { transform: scale(1.7); opacity: 1; }
+.pbar .mk-box { color: var(--text, #fff); }
+.np .mk-box { color: #fff; }
+.np.npl-light:not(.is-video) .mk-box { color: #1d1d1f; }
+.np.npl-light:not(.is-video) .mk-box .mk::after { box-shadow: 0 0 0 1.5px rgba(255, 255, 255, .5); }
+/* 手机 ⋯ 里的书签：一行时间，右边 × 删除 */
+.np-more-pop .npm-mk { display: flex; align-items: center; padding: 0; }
+.np-more-pop .npm-mk .npm-mkgo { all: unset; flex: 1; display: flex; align-items: center; gap: 10px; padding: 10px 12px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.np-more-pop .npm-mk .npm-mkdel { all: unset; width: 36px; height: 36px; display: grid; place-items: center; opacity: .5; cursor: pointer; }
+.np-more-pop .npm-mk .npm-mkdel svg { width: 14px; height: 14px; }
+.np-more-pop :is(.npm-mkadd, .npm-mk) svg { width: 17px; height: 17px; }
+
+/* ===== 创作栏版（2026-11-19 用户：两版并存，设置里选「创作栏」）=====
+   选项（.b5-opt）+ 提示词框（.ig-top-f，一直展开）在左边一整栏，和导航栏连成一块（同一个底色）；右边是看成品的地方，缩略图在视频下面。
+   栏里的东西就是以前右栏 + 输入框里的那些，一样不少；放不下时选项那一段上下滚，提示词框和“生成”一直在栏底 */
+@media (min-width: 1200px) {
+  html:has(#main > .ig-grid.b5-col) { --b5col: 372px; --b5colbg: var(--card); }
+  html:has(#main > .ig-grid.b5-col) .rail { background: var(--b5colbg); }
+  .main:has(> .ig-grid.b5-col) > .page-head { position: relative; z-index: 2; }
+  .main:has(> .ig-grid.b5-col) > .page-head.b5-head .b5-mid { transform: translateX(calc((var(--b5col) + 40px) / 2)); }
+  .main:has(> .ig-grid.b5-col) > .page-head .b5-gl { position: absolute; left: calc(var(--b5col) + 40px); top: 50%; transform: translateY(-50%); }
+  .ig-grid.ig-v2.b5-on.b5-col { grid-template-columns: var(--b5col) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; column-gap: 40px; row-gap: 14px;
+    height: calc(100vh - var(--b5top, 68px) - 14px) !important; }
+  .main:has(> .ig-grid.b5-col)::before { content: ''; position: fixed; z-index: 0; left: 0; top: 0; bottom: 0; width: var(--b5sw, 412px); background: var(--b5colbg); pointer-events: none; }  /* 宽度由 igB5 的 b5ColFit 算（看 #main 有没有 transform） */
+  .ig-grid.b5-col > .stack { grid-column: 2; grid-row: 1 / -1; position: relative; z-index: 1; }
+  .ig-grid.b5-col > .b5-opt { grid-column: 1; grid-row: 1; position: relative; z-index: 1; background: transparent !important; box-shadow: none !important; border-radius: 0 !important; }
+  .ig-grid.b5-col .b5-sc { padding: 2px 4px 18px 0; -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent); }
+  .ig-grid.b5-col > .b5-drag, .ig-grid.b5-col > .b5-tools:not(.in) { display: none !important; }
+  .ig-grid.b5-on.b5-col > .ig-top-f, .ig-grid.b5-on.b5-col > .ig-top-f.open { position: relative; left: auto !important; bottom: auto; transform: none; grid-column: 1; grid-row: 2; width: auto !important;
+    z-index: 1; margin: 0 0 4px !important; box-shadow: inset 0 0 0 1px var(--line) !important; -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--field) !important; }
+  .ig-grid.b5-col > .ig-top-f .ig-comp-top .textarea { max-height: 30vh; }
+  /* “本次使用”那一行：在栏里提示词框正上方（位置由 vdDockFit 算） */
+  html:has(#vd-cur.in-col:not([hidden])) .ig-grid.b5-col { row-gap: 40px; }
+  #vd-cur.in-col { text-align: left; justify-content: flex-start; }
+}
+
+/* 生图页缩略图在下面（创作栏版固定这样；输入框版选“在下面”时也是）：横着一排滑动。以前还是竖排的网格，一行只放下一张，
+   后面的都被挡住（2026-11-19 查创作栏版时发现）。每一批前面的“N 张 · 时间 · 模型 / 复用 / 删除此批”收成一个窄竖块，功能不少 */
+@media (min-width: 1200px) {
+  .ig-grid.b5-on .ig-gal-card:not(.port) > .ig-stage:not(:empty) + .ig-gal { display: flex !important; flex-wrap: nowrap; align-items: stretch; gap: 8px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; padding: 2px; flex: none; }
+  .ig-grid.b5-on .ig-gal-card:not(.port) > .ig-stage:not(:empty) + .ig-gal > .ig-tile { flex: none; width: 116px !important; height: 116px !important; margin: 0 !important; border-radius: 10px; }
+  .ig-grid.b5-on .ig-gal-card:not(.port) > .ig-stage:not(:empty) + .ig-gal > .ig-batch { flex: none; width: 118px; flex-direction: column; flex-wrap: nowrap; align-items: flex-start; justify-content: center; gap: 4px; padding: 0 4px 0 6px; font-size: 11.5px; line-height: 1.45; }
+  .ig-grid.b5-on .ig-gal-card:not(.port) > .ig-stage:not(:empty) + .ig-gal > .ig-batch > .spacer { display: none; }
+  .ig-grid.b5-on .ig-gal-card:not(.port) > .ig-stage:not(:empty) + .ig-gal > .ig-batch .btn { height: 24px; padding: 0 6px; font-size: 11.5px; }
+}
+
+/* 创作栏版 + 电脑应用：窗口顶上 34px 的拖动条（.tb-strip）铺的是页面底色，盖在栏的底色上面，栏顶上一截发黑（2026-11-19 用户截图）。
+   左边到栏右边这一段涂成栏的颜色（background-attachment: fixed = 按窗口坐标，--b5edge 由 b5ColFit 算） */
+@media (min-width: 1200px) {
+  html:has(#main > .ig-grid.b5-col) body.in-app .tb-strip { background: linear-gradient(to right, var(--b5colbg) 0, var(--b5colbg) var(--b5edge, 500px), var(--bg) var(--b5edge, 500px)) fixed; }
+}

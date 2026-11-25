@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Studio">
+<!-- 2026-11-14：不再用 black-translucent（iOS 26.1 起主屏幕应用用它时系统会在顶部盖一层模糊，页面去不掉；去掉后状态栏不透明、按 theme-color / 页面底色上色。要删掉主屏幕图标重新添加才生效） -->
+<link rel="apple-touch-icon" href="/static/app-icon-512.png">
+<link rel="manifest" href="/static/manifest.json">
+<title>Studio · 配对</title>
+<style>
+  :root { color-scheme: light dark; }
+  html, body { margin: 0; height: 100%; font: 16px -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", sans-serif; background: #f5f5f7; color: #1d1d1f; }
+  @media (prefers-color-scheme: dark) { html, body { background: #000; color: #f5f5f7; } .card { background: #1c1c1e !important; } input { background: #2c2c2e !important; color: #fff !important; } .tip { color: #8e8e93 !important; } }
+  body { display: grid; place-items: center; padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom); box-sizing: border-box; }
+  .card { width: min(360px, 100%); background: #fff; border-radius: 22px; padding: 30px 24px 26px; box-sizing: border-box; text-align: center; box-shadow: 0 10px 40px rgba(0, 0, 0, .08); }
+  .logo { font-size: 26px; font-weight: 700; letter-spacing: -.02em; margin-bottom: 6px; }
+  .tip { color: #6e6e73; font-size: 14px; line-height: 1.5; margin: 0 0 22px; }
+  input { width: 100%; box-sizing: border-box; font-size: 30px; letter-spacing: .35em; text-align: center; padding: 14px 10px; border: 0; border-radius: 14px; background: #f2f2f7; outline: none; font-variant-numeric: tabular-nums; }
+  input:focus-visible { box-shadow: 0 0 0 2px #0071e3; }
+  button { margin-top: 18px; width: 100%; padding: 14px; border: 0; border-radius: 14px; font-size: 17px; font-weight: 600; color: #fff; background: #007aff; }
+  button:disabled { opacity: .5; }
+  .err { color: #ff3b30; font-size: 14px; min-height: 20px; margin-top: 12px; }
+</style>
+<script src="/static/i18n-en.js"></script><script src="/static/i18n.js"></script>
+</head>
+<body>
+<form class="card" id="f">
+  <div class="logo">♫ Studio</div>
+  <p class="tip">在电脑上打开 Studio，点击左下角齿轮 →“手机访问”→“配对新设备”，输入显示的 6 位数字。</p>
+  <input id="code" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" placeholder="000000" autofocus>
+  <button id="go" type="submit">配对</button>
+  <div class="err" id="err"></div>
+</form>
+<script>
+  const ua = navigator.userAgent;
+  const name = /iPad/.test(ua) ? 'iPad' : /iPhone/.test(ua) ? 'iPhone' : /Android/.test(ua) ? 'Android 手机' : '其他设备';
+  const f = document.getElementById('f'), code = document.getElementById('code'), err = document.getElementById('err'), go = document.getElementById('go');
+  let last = '';  // 同一个错的码不再自动提交（每个码只能试 5 次）
+  code.oninput = () => { code.value = code.value.replace(/\D/g, '').slice(0, 6); if (code.value.length === 6 && code.value !== last) f.requestSubmit(); };
+  f.onsubmit = async e => {
+    e.preventDefault(); err.textContent = ''; go.disabled = true; last = code.value;
+    try {
+      let r;
+      try { r = await fetch('/api/remote/pair', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: code.value, name }) }); }
+      catch { throw new Error('无法连接电脑上的 Studio：请确认电脑已开机、Tailscale 已连接'); }
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || '配对失败');
+      location.replace('/play');
+    } catch (x) { err.textContent = x.message; code.select(); }
+    go.disabled = false;
+  };
+</script>
+</body>
+</html>

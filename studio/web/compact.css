@@ -1,0 +1,135 @@
+/* ---------------- 精简模式：只剩一条小小的播放器（应用：整个窗口缩成它；网页：画中画小窗） ---------------- */
+.cp { --cp-h: 64px; position: relative; display: flex; flex-direction: column; height: 100%; color: #f2f2f4; background: #1c1c1f;
+  font: 13px -apple-system, "Segoe UI", "Microsoft YaHei UI", sans-serif; user-select: none; -webkit-user-select: none; overflow: hidden; }
+.cp-main { position: relative; flex: none; height: var(--cp-h); display: flex; align-items: center; gap: 10px; padding: 0 8px 0 10px; cursor: default; }
+/* 左边：小封面，点一下回到完整界面 */
+.cp-art { all: unset; position: relative; flex: none; width: 44px; height: 44px; border-radius: 10px; overflow: hidden; cursor: pointer; background: #2a2a2e; }
+.cp-art .art { width: 44px !important; height: 44px !important; border-radius: 10px; }
+.cp-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cp-art-x { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0, 0, 0, .5); color: #fff; opacity: 0; transition: opacity .18s; }
+.cp-art-x svg { width: 18px; height: 18px; }
+.cp-art:hover .cp-art-x { opacity: 1; }
+/* 中间：最上面一行很小的标题；下面要么是当前字幕，要么是按钮（鼠标移上去 / 没有字幕时） */
+.cp-mid { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 2px; }
+.cp-title { font-size: 11px; color: rgba(255, 255, 255, .5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 15px; }
+.cp-stage { position: relative; height: 32px; }
+.cp-line, .cp-ctl { position: absolute; inset: 0; display: flex; align-items: center; transition: opacity .2s; }
+.cp-line { font-size: 14px; font-weight: 600; line-height: 1.25; overflow: hidden; }
+.cp-line span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.cp-line .tr { display: none; }
+.cp-ctl { gap: 2px; opacity: 0; pointer-events: none; }
+.cp:hover .cp-ctl, .cp.nosub .cp-ctl { opacity: 1; pointer-events: auto; }
+.cp:hover .cp-line, .cp.nosub .cp-line { opacity: 0; }
+.cp-ctl button, .cp-win button { all: unset; cursor: pointer; flex: none; width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; color: rgba(255, 255, 255, .82); transition: background .15s, color .15s, transform .12s; }
+.cp-ctl button:hover, .cp-win button:hover { background: rgba(255, 255, 255, .1); color: #fff; }
+.cp-ctl button:active { transform: scale(.9); }
+.cp-ctl button svg { width: 18px; height: 18px; }
+.cp-ctl [data-cp="play"] { width: 34px; height: 34px; border-radius: 50%; background: #fff; color: #111; margin: 0 4px; }
+.cp-ctl [data-cp="play"]:hover { background: #fff; color: #111; transform: scale(1.05); }
+.cp-ctl [data-cp="play"] svg { width: 15px; height: 15px; }
+.cp-ctl .cp-sp { flex: 1; }
+.cp-ctl button.on { color: #a99bff; background: rgba(169, 155, 255, .14); }
+/* 右上角：始终在最前面、最小化（只有应用里有） */
+.cp-win { position: absolute; top: 4px; right: 4px; display: flex; gap: 0; opacity: 0; transition: opacity .2s; }
+.cp:hover .cp-win { opacity: 1; }
+.cp-win button { width: 24px; height: 22px; border-radius: 6px; color: rgba(255, 255, 255, .6); }
+.cp-win button svg { width: 13px; height: 13px; }
+.cp-win button.on { color: #a99bff; }
+.cp-main.has-win { padding-right: 8px; }
+/* 最底下一条细细的进度 */
+.cp-prog { position: absolute; left: 0; right: 0; top: calc(var(--cp-h) - 2px); height: 2px; background: rgba(255, 255, 255, .08); pointer-events: none; }
+.cp-prog i { display: block; height: 100%; width: 0; background: rgba(255, 255, 255, .55); }
+/* 展开的抽屉：字幕（可以滚动 / 查找 / 点一下跳过去）或播放列表 */
+.cp-drawer { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; border-top: 1px solid rgba(255, 255, 255, .07); padding: 0 10px 8px; }
+.cp-drawer[hidden] { display: none; }
+.cp-drawer .subs-host { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.cp-drawer .subs { flex: 1; min-height: 0; overflow: auto; max-height: none; }
+.cp-drawer .ql-rows { max-height: none; overflow: auto; }
+.cp-drawer > .cp-q { flex: 1; min-height: 0; overflow: auto; padding-top: 8px; }
+.cp-empty { padding: 24px 8px; text-align: center; color: rgba(255, 255, 255, .5); font-size: 12px; }
+.cp-empty .btn { margin-top: 10px; }
+html[data-theme="light"] .cp { background: #f6f6f8; color: #1d1d1f; }
+html[data-theme="light"] .cp-title { color: rgba(0, 0, 0, .45); }
+html[data-theme="light"] .cp-ctl button, html[data-theme="light"] .cp-win button { color: rgba(0, 0, 0, .7); }
+html[data-theme="light"] .cp-ctl button:hover, html[data-theme="light"] .cp-win button:hover { background: rgba(0, 0, 0, .06); color: #000; }
+html[data-theme="light"] .cp-ctl [data-cp="play"] { background: #1d1d1f; color: #fff; }
+html[data-theme="light"] .cp-prog { background: rgba(0, 0, 0, .06); }
+html[data-theme="light"] .cp-prog i { background: rgba(0, 0, 0, .45); }
+html[data-theme="light"] .cp-drawer { border-top-color: rgba(0, 0, 0, .07); }
+html[data-theme="light"] .cp-empty { color: rgba(0, 0, 0, .45); }
+/* 应用：整个窗口就是精简播放器，其他界面全部隐藏 */
+body.compact { overflow: hidden; }
+body.compact > *:not(#cp-host) { display: none !important; }
+#cp-host { position: fixed; inset: 0; z-index: 100; }
+#cp-host[hidden] { display: none; }
+/* 页面右上角的“精简模式”按钮 */
+.cp-open { position: fixed; z-index: 30; top: 10px; right: 12px; width: 30px; height: 30px; border: 0; border-radius: 8px; display: grid; place-items: center; cursor: pointer;
+  background: transparent; color: var(--text-2); transition: background .15s, color .15s; }
+.cp-open:hover { background: rgba(0, 0, 0, .06); color: var(--text); }
+html[data-theme="dark"] .cp-open:hover { background: rgba(255, 255, 255, .08); }
+.cp-open svg { width: 19px; height: 19px; }
+body.np-open .cp-open { display: none; }
+
+/* v15：更小的按钮，播放键居中（字幕 · 上一首 · 播放 · 下一首 · 播放列表），标题和按钮之间留出空隙 */
+.cp { --cp-h: 60px; }
+.cp-main { gap: 10px; padding: 0 10px; }
+.cp-art, .cp-art .art { width: 40px !important; height: 40px !important; border-radius: 9px; }
+.cp-mid { gap: 4px; padding-top: 1px; }
+.cp-title { padding-right: 52px; }
+.cp-stage { height: 28px; }
+.cp-ctl { justify-content: center; gap: 4px; padding-right: 50px; }
+.cp-ctl button { width: 28px; height: 28px; border-radius: 7px; }
+.cp-ctl button svg { width: 16px; height: 16px; }
+.cp-ctl [data-cp="play"] { width: 28px; height: 28px; margin: 0 6px; }
+.cp-ctl [data-cp="play"] svg { width: 12px; height: 12px; }
+.cp-line { padding-right: 50px; font-size: 13.5px; }
+.cp-main:not(.has-win) .cp-ctl, .cp-main:not(.has-win) .cp-line, .cp-main:not(.has-win) .cp-title { padding-right: 0; }
+.cp-win { top: 50%; transform: translateY(-50%); right: 6px; flex-direction: row; gap: 2px; }
+.cp-win button { width: 22px; height: 22px; }
+.cp-win [data-cp="x"]:hover { background: #c42b1c; color: #fff; }
+@container (max-width: 300px) { .cp-ctl { gap: 0; } }
+
+/* ===== 2026-11-18 用户：精简模式的 UX ===== */
+/* 播放键不要白色大圆，和全屏播放页一样只有图标；按下的“字幕 / 播放列表”不要紫色底块，只是变亮 */
+.cp-ctl [data-cp="play"], .cp-ctl [data-cp="play"]:hover { background: transparent !important; color: #fff !important; width: 36px; height: 36px; margin: 0 2px; transform: none; }
+.cp-ctl [data-cp="play"] svg { width: 22px; height: 22px; }
+.cp-ctl [data-cp="play"]:active { transform: scale(.9); }
+.cp-ctl button.on { background: transparent !important; color: #fff; }
+.cp-ctl button:not(.on):not([data-cp="play"]) { color: rgba(255, 255, 255, .6); }
+.cp-ctl button:hover { background: transparent !important; color: #fff; }
+html[data-theme="light"] .cp-ctl [data-cp="play"], html[data-theme="light"] .cp-ctl [data-cp="play"]:hover { color: #1d1d1f !important; background: transparent !important; }
+html[data-theme="light"] .cp-ctl button:not(.on):not([data-cp="play"]) { color: rgba(0, 0, 0, .5); }
+html[data-theme="light"] .cp-ctl button.on, html[data-theme="light"] .cp-ctl button:hover { color: #000; }
+/* 进度：能点、能拖（看着还是细细一条，移上去变粗一点） */
+.cp-prog { pointer-events: auto; cursor: pointer; z-index: 3; transition: height .12s; }
+.cp-prog::before { content: ""; position: absolute; left: 0; right: 0; top: -6px; bottom: -6px; }
+.cp-prog:hover, .cp-prog.drag { height: 4px; }
+.cp-prog:hover i, .cp-prog.drag i { background: #fff; }
+html[data-theme="light"] .cp-prog:hover i, html[data-theme="light"] .cp-prog.drag i { background: #1d1d1f; }
+/* 字幕：歌词式（当前那句亮、略大，别的暗；没有时间、没有“逐行 / 段落 / 全文”，上下渐隐，点一句跳过去）；查找只留一个小图标 */
+.cp-drawer { border-top: 0; padding: 0 6px 0; }
+.cp-drawer .lyrics { position: relative; }
+.cp-drawer .lyrics .subs-tools { position: absolute; z-index: 2; top: 6px; right: 4px; margin: 0; }
+.cp-drawer .lyrics .subs-tools [data-mode] { display: none !important; }
+.cp-drawer .lyrics .find-btn { font-size: 0; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 7px; color: rgba(255, 255, 255, .45); opacity: 0; transition: opacity .2s; }
+.cp-drawer .lyrics .find-btn svg { width: 15px; height: 15px; margin: 0; }
+.cp:hover .cp-drawer .lyrics .find-btn { opacity: 1; }
+.cp-drawer .lyrics .find-btn:hover { color: #fff; }
+.cp-drawer .lyrics .subs-tools:has(.subs-find:not([hidden])) { left: 4px; background: #1c1c1f; border-radius: 8px; }
+.cp-drawer .lyrics .subs { --lyr-at: .4; padding: 34% 0 46%; -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 16%, #000 80%, transparent 100%); mask-image: linear-gradient(180deg, transparent 0, #000 16%, #000 80%, transparent 100%); scrollbar-width: none; }
+.cp-drawer .lyrics .subs::-webkit-scrollbar { display: none; }
+.cp-drawer .lyrics .sub { font-size: 15px; line-height: 1.45; font-weight: 600; padding: 5px 10px; border-radius: 8px; color: rgba(255, 255, 255, .34); transform-origin: left center; }
+.cp-drawer .lyrics .sub.on, html[data-theme] .cp-drawer .lyrics .sub.on { color: #fff; transform: scale(1.03); background: transparent !important; box-shadow: none !important; }
+.cp-drawer .lyrics .sub:hover { background: rgba(255, 255, 255, .06); color: rgba(255, 255, 255, .6); }
+.cp-drawer .lyrics .sub.on:hover { color: #fff; }
+html[data-theme="light"] .cp-drawer .lyrics .sub { color: rgba(0, 0, 0, .32); }
+html[data-theme="light"] .cp-drawer .lyrics .sub.on, html[data-theme="light"] .cp-drawer .lyrics .sub.on:hover { color: #1d1d1f; }
+html[data-theme="light"] .cp-drawer .lyrics .sub:hover { background: rgba(0, 0, 0, .05); color: rgba(0, 0, 0, .6); }
+html[data-theme="light"] .cp-drawer .lyrics .find-btn { color: rgba(0, 0, 0, .45); }
+html[data-theme="light"] .cp-drawer .lyrics .subs-tools:has(.subs-find:not([hidden])) { background: #f6f6f8; }
+/* 播放列表：行矮一点、封面小一点（小窗里一次多看几首） */
+.cp-drawer > .cp-q { padding-top: 4px; }
+.cp-drawer .ql-row { padding-top: 4px !important; padding-bottom: 4px !important; min-height: 0 !important; gap: 10px; }
+.cp-drawer .ql-row :is(.art, .row-art, .ql-art) { width: 30px !important; height: 30px !important; min-width: 30px; border-radius: 7px; }
+.cp-drawer .ql-t { font-size: 13px; }
+.cp-drawer .ql-s { font-size: 11.5px; }
