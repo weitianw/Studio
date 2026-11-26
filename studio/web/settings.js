@@ -84,7 +84,7 @@ function renderSettings() {
   stNav(R);
   const pick = (id, b) => { $$(`#st-${id} button`, R).forEach(y => y.classList.toggle('on', y === b)); $(`#st-${id}-n`, R).textContent = b.title; };
   $$('#st-theme button', R).forEach(b => b.onclick = () => { S.theme = b.dataset.v; persist(); applyTheme(true); pick('theme', b); });
-  $$('#st-lang button', R).forEach(b => b.onclick = () => { if (b.dataset.v !== (window.STUDIO_LANG || 'en')) window.setStudioLang?.(b.dataset.v); });  // 界面语言：英文（默认）/ 中文，切换后重新载入页面
+  $$('#st-lang button', R).forEach(b => b.onclick = () => { if (b.dataset.v !== (window.STUDIO_LANG || 'en')) window.setStudioLang?.(b.dataset.v); });  // 界面语言：English / 中文（默认值见 config.UI_LANG），切换后重新载入页面
   $$('#st-vid button', R).forEach(b => b.onclick = () => { S.vidMode = b.dataset.v; persist(); pick('vid', b); const m = MINI; if (m && !m.hidden && !MINI_OUT) { m.hidden = true; m.classList.remove('show'); } miniSync(); });
   $$('#st-cover button', R).forEach(b => b.onclick = () => { S.coverMode = b.dataset.v; persist(); pick('cover', b); if (PB.a) pbPaint(true); qPanelPaint(); });
   $$('#st-lock button', R).forEach(b => b.onclick = () => { S.lockMin = +b.dataset.v; persist(); pick('lock', b); idleT = Date.now(); });

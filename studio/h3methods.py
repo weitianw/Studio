@@ -9,10 +9,11 @@
 ② 接不了的条件（参考 + 关键帧、开头片段、引导视频、从第几秒开始的指定声音）：auto 时自动用 ①，任务里记着用的是哪个。
 没有参考时的中间关键帧可以走 ②（T8 条件后面串原生 AddGuide）。"""
 import copy, json, os
+import config  # noqa: E402  路径（开源泛化 ①，studio/config.py）
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DIR = os.path.join(HERE, 'workflows', 'methods')
-NODES = os.path.join(os.path.dirname(HERE), 'tools', 'ComfyUI_windows_portable', 'ComfyUI', 'custom_nodes')
+NODES = config.comfy('ComfyUI', 'custom_nodes')
 T8_PACKS = ('comfyui-minimax-h3-audio-T8', 'reservedvram', 'comfyui-kjnodes')  # ② 要的节点包（videohelpersuite 也装了，但 app 不用它）
 ENGINES = {
     '1': {'name': '① 原生节点', 'short': '原生'},

@@ -3,6 +3,8 @@
 只用 Python 标准库。启动：python -I studio/server.py
 """
 import array, base64, contextlib, datetime, difflib, http.client, http.server, json, os, re, shutil, socketserver, subprocess, sys, threading, time
+import os as _os, sys as _sys; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))  # 用 -I 启动时脚本所在的文件夹不在搜索路径里
+import config  # noqa: E402  路径（开源泛化 ①，studio/config.py）
 import tempfile, traceback, unicodedata, urllib.error, urllib.parse, urllib.request, uuid, wave, webbrowser
 
 # Windows 终端默认是 GBK，打印 ✓ 等字符会抛错并中断任务：统一改成 UTF-8 并替换无法显示的字符
@@ -22,14 +24,14 @@ JOBS = os.path.join(ROOT, 'outputs', 'studio')
 LIB = os.path.join(ROOT, 'voice-library')
 PROMPTS = os.path.join(LIB, 'prompt_text')
 META = os.path.join(LIB, 'voices.json')
-FFMPEG = os.path.join(ROOT, 'tools', 'ffmpeg', 'bin', 'ffmpeg.exe')
-FFPROBE = os.path.join(ROOT, 'tools', 'ffmpeg', 'bin', 'ffprobe.exe')
-ENGINE_EXE = os.path.join(ROOT, 'audio.cpp', 'audiocpp_server.exe')
+FFMPEG = config.FFMPEG
+FFPROBE = config.FFPROBE
+ENGINE_EXE = config.audiocpp('audiocpp_server.exe')
 ENGINE = 'http://127.0.0.1:8080'
 PORT = 7860
 if '--port' in sys.argv:  # 开发测试用：和正在用的那个错开端口
     PORT = int(sys.argv[sys.argv.index('--port') + 1])
-POTPLAYER = r'D:\App\PotPlayer\PotPlayerMini64.exe'
+POTPLAYER = config.POTPLAYER
 ASR_MODEL = 'asr'
 BAD_CER = 0.2
 DEFAULT_SAMPLE = '你好，很高兴认识你。今天的天气不错，我们一起去河边走走吧，顺便聊聊最近发生的事情。'
@@ -660,7 +662,7 @@ def start_engine():
         pass
     log = open(lp, 'w', encoding='utf-8')
     p = subprocess.Popen([ENGINE_EXE, '--config', server_cfg_file(), '--ui', '--idle-unload-ms', '900000'],
-                         cwd=os.path.join(ROOT, 'audio.cpp'), stdout=log, stderr=subprocess.STDOUT, creationflags=NO_WINDOW)
+                         cwd=config.AUDIOCPP_DIR, stdout=log, stderr=subprocess.STDOUT, creationflags=NO_WINDOW)
     log.close()
     ENGINE_OWNED = True
     for _ in range(120):
@@ -1167,8 +1169,8 @@ def ffmpeg(*args):
 
 
 # ---------------------------------------------------------------- 人声分离（去掉背景音乐 / 音效，只留说话声）
-SEP_CLI = os.path.join(ROOT, 'audio.cpp', 'audiocpp_cli.exe')
-SEP_MODEL = os.path.join(ROOT, 'models', 'Mel-Band-RoFormer-GGUF', 'mel-band-roformer-f16.gguf')
+SEP_CLI = config.audiocpp('audiocpp_cli.exe')
+SEP_MODEL = config.models('Mel-Band-RoFormer-GGUF', 'mel-band-roformer-f16.gguf')
 sep_lock = threading.Lock()
 
 
@@ -2271,6 +2273,7 @@ def index_html(name='index.html'):
     """首页：引用的 /static 文件加上 ?v=版本号（每次请求都现算，只是 stat 二十几个文件，约 0.1 毫秒）"""
     with open(os.path.join(WEB, name), 'rb') as f:
         html = f.read().decode('utf-8')
+    html = re.sub(r'<html\b', f'<html data-lang-default="{config.UI_LANG}"', html, count=1)  # 界面默认语言（i18n.js 读，开源泛化 ④）
     return _INDEX_RE.sub(lambda m: f'{m.group(1)}/static/{m.group(2)}?v={static_ver(os.path.join(WEB, *m.group(2).split("/")))}{m.group(3)}', html).encode('utf-8')
 
 
@@ -2354,7 +2357,7 @@ def local_chat_img(system, user, images):
 
 
 videoedit.DESCRIBE, videoedit.DESCRIBE_RELEASE = local_chat_img, lambda: promptgen.Engine.release(wait=True)
-videoedit.DESCRIBE_OK = lambda: promptgen.available() and promptgen.vision()
+videoedit.DESCRIBE_OK = lambda: (lambda mid: promptgen.available(mid) and promptgen.vision(mid))(promptgen.Engine.cfg.get('model') if isinstance(promptgen.Engine.cfg, dict) else None)
 # 提示词翻成英文（生视频的“提示词语言 = 英文”）：本地提示词模型翻，翻完让出显存；缓存放在 AI 助手的设置旁边（见 ptrans.py）
 import ptrans
 ptrans.CHAT = local_chat
@@ -2375,6 +2378,9 @@ def q21_chat(system, user, images):
 
 
 imagegen.q21.CHAT = q21_chat
+import catalog, modelsinfo  # noqa: E402  开源泛化 ②⑤：模型目录、模型页后台
+modelsinfo.init(q21=imagegen.q21, imagegen=imagegen, promptgen=promptgen, videogen=videogen, server_cfg=lambda: server_cfg(),
+                restart_tts=lambda: threading.Thread(target=start_engine, daemon=True).start())
 import fisher  # noqa: E402  Fisher Pose 3D 人偶编辑器的接口
 fisher.DATA_ROOT = lambda sp: os.path.dirname(imagegen.images_dir(sp))  # 普通空间 outputs/fisher，私密空间 .data/fisher
 imagegen.q21.RELEASE = lambda: promptgen.Engine.release(wait=True)
@@ -2435,15 +2441,39 @@ def server_cfg():
             m['session_options'] = so
         else:
             m.pop('session_options', None)
+    ids = {m.get('id') for m in cfg.get('models', [])}
+    for e in catalog.user_entries('tts'):  # 开源泛化 ②：模型页里自己加的配音 / 换声 / 识别模型（studio/user-models.json）
+        if e.get('hidden'):
+            cfg['models'] = [m for m in cfg.get('models', []) if m.get('id') != e['id']]
+        elif e.get('id') not in ids and e.get('family') and e.get('path'):
+            cfg.setdefault('models', []).append({'id': e['id'], 'family': e['family'], 'path': e['path'], 'task': e.get('task', 'tts'), 'mode': e.get('mode', 'offline')})
+    return _cfg_abs(cfg)
+
+
+def _cfg_abs(cfg):
+    """开源泛化 ①：server.json 里的路径可以写成相对程序文件夹的（models/...、voice-library），交给引擎前展开成完整路径
+    （models/ 开头的跟着 config.MODELS_DIR 走）。已经是完整路径的不动——以前的写法照样能用"""
+    if isinstance(cfg.get('voice_dir'), str):
+        cfg['voice_dir'] = config.resolve(cfg['voice_dir']).replace('\\', '/')
+    for m in cfg.get('models', []):
+        if isinstance(m.get('path'), str):
+            m['path'] = config.resolve(m['path']).replace('\\', '/')
+        so = m.get('session_options')
+        if isinstance(so, dict):
+            for k, v in so.items():
+                if isinstance(v, str) and k.endswith('_path') and v.replace('\\', '/').startswith('models/'):
+                    so[k] = config.resolve(v).replace('\\', '/')
     return cfg
 
 
 def server_cfg_file():
-    """给引擎的 --config：有本机覆盖就合成一份 server.effective.json，没有就是 server.json"""
+    """给引擎的 --config：合成一份 server.effective.json（server.json + 本机覆盖，路径展开成完整路径）。
+    server.json 里全是完整路径、又没有本机覆盖时，照旧直接给 server.json"""
     loc, eff = _cfg_paths()
-    if not _cfg_local():
+    cfg = server_cfg()
+    if not _cfg_local() and cfg == (read_json(SERVER_CFG, {}) or {}):
         return SERVER_CFG
-    write_json(eff, server_cfg(), indent=2)
+    write_json(eff, cfg, indent=2)
     return eff
 
 
@@ -3133,7 +3163,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                             return
                         CTX.space = 'n'
                         self.close_connection = True  # 没读请求体：这条连接不再复用
-                        if method == 'GET' and (not parts or parts[0] in ('play', 'tts', 'works', 'vc', 'voices', 'stt', 'help', 'img', 'prompt', 'video', 'audioedit', 'mats', 'settings', 'batch')):
+                        if method == 'GET' and (not parts or parts[0] in ('play', 'tts', 'works', 'vc', 'voices', 'stt', 'help', 'img', 'prompt', 'video', 'audioedit', 'mats', 'settings', 'batch', 'models')):
                             self.send_response(302); self.send_header('Location', '/pair'); self.send_header('Content-Length', '0'); self.end_headers()
                             return
                         return self.send_json({'error': '此设备尚未配对'}, 401)
@@ -3171,10 +3201,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def dispatch(self, method, p, q):
         if (p[:1] in (['extensions'], ['fisher_pose'], ['view']) or p[:2] == ['upload', 'image']) and fisher.handle(self, method, p, q, space()):
             return  # Fisher Pose 的 3D 人偶编辑器（生图页里用 iframe 打开）要的接口，见 fisher.py
-        if method == 'GET' and (not p or (len(p) == 1 and p[0] in ('tts', 'vc', 'voices', 'works', 'stt', 'help', 'play', 'img', 'prompt', 'video', 'audioedit', 'mats', 'settings', 'batch'))):
+        if method == 'GET' and (not p or (len(p) == 1 and p[0] in ('tts', 'vc', 'voices', 'works', 'stt', 'help', 'play', 'img', 'prompt', 'video', 'audioedit', 'mats', 'settings', 'batch', 'models'))):
             return self.send_static(os.path.join(WEB, 'index.html'), raw=index_html())
         if method == 'GET' and p == ['pair']:
-            return self.send_file(os.path.join(WEB, 'pair.html'))
+            return self.send_static(os.path.join(WEB, 'pair.html'), raw=index_html('pair.html'))
         if method == 'GET' and p == ['sw.js']:  # 推送用的 service worker：只管收推送、点通知打开页面，不缓存任何东西
             with open(os.path.join(WEB, 'sw.js'), 'rb') as f:
                 body = f.read()
@@ -3240,6 +3270,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self.rc_api(method, api[1:], q)
         if api[0] == 'civitai':
             return self.civitai_api(method, api[1:], q)
+        if api[0] == 'catalog':  # 开源泛化 ②⑤：模型页（硬件概况、每类模型放不放得下、自己加模型）
+            return self.catalog_api(method, api[1:], q)
         if api == ['play', 'subs']:
             return self.play_api(method, api[2:], q)
         if api == ['play', 'translate']:
@@ -4249,8 +4281,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             trace = prompttrace.load(os.path.join(os.path.dirname(pf), 'prompt-traces'), p[1])
             return self.send_json(trace) if trace else self.send_json({'error': '完整提示词记录不存在或已过期'}, 404)
         if p == ['status']:
-            return self.send_json({'available': promptgen.available(), 'running': promptgen.Engine.running(), 'busy': promptgen.Engine.busy,
-                                   'model': promptgen.MODEL_NAME, 'vision': promptgen.vision(), 'gen_defaults': promptgen.GEN_DEFAULTS, 'engine_defaults': promptgen.ENGINE_DEFAULTS,
+            eng = promptgen.clamp_engine(read_json(ef, {}) or {})
+            mi = promptgen.model_info(eng['model']) or {}
+            return self.send_json({'available': promptgen.available(eng['model']), 'running': promptgen.Engine.running(), 'busy': promptgen.Engine.busy,
+                                   'model': mi.get('name') or promptgen.MODEL_NAME, 'models': promptgen.model_list(), 'vision': promptgen.vision(eng['model']), 'gen_defaults': promptgen.GEN_DEFAULTS, 'engine_defaults': promptgen.ENGINE_DEFAULTS,
                                    'kv_types': promptgen.KV_TYPES, 'engine': promptgen.clamp_engine(read_json(ef, {}) or {}), 'presets': promptgen.load_presets(pf),
                                    'recommended': promptgen.RECOMMENDED, 'ctx_choices': promptgen.CTX_CHOICES, 'ubatch_choices': promptgen.UBATCH_CHOICES,
                                    'default_presets': promptgen.DEFAULT_PRESETS})
@@ -4458,6 +4492,26 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 f = os.path.basename(str(q.get('f') or ''))
                 return self.send_file(os.path.join(tdir, f))
         except (ValueError, RuntimeError, OSError, KeyError) as e:
+            return self.send_json({'error': str(e)}, 400)
+        return self.send_json({'error': 'not found'}, 404)
+
+    def catalog_api(self, method, p, q):
+        """GET /api/catalog = 模型页的全部内容；GET /api/catalog/files?folder= = 某个文件夹里的模型文件；
+        POST /api/catalog/user {kind, entry} = 加 / 改 / 藏一个模型；DELETE /api/catalog/user?kind=&id= = 删掉自己加的"""
+        try:
+            if p == [] and method == 'GET':
+                return self.send_json(modelsinfo.report())
+            if p == ['files'] and method == 'GET':
+                return self.send_json(modelsinfo.list_files(q.get('folder', '')))
+            if p == ['user'] and method == 'POST':
+                b = self.jbody()
+                return self.send_json({'ok': True, 'entry': modelsinfo.save_user(b.get('kind'), b.get('entry'))})
+            if p == ['user'] and method == 'DELETE':
+                modelsinfo.delete_user(q.get('kind', ''), q.get('id', ''))
+                return self.send_json({'ok': True})
+        except KeyError:
+            return self.send_json({'error': '没有这个模型'}, 404)
+        except ValueError as e:
             return self.send_json({'error': str(e)}, 400)
         return self.send_json({'error': 'not found'}, 404)
 

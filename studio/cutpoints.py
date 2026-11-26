@@ -9,6 +9,7 @@ AIST++ 的“动作节拍”= 全身关节速度的低谷；Endo 2024 的舞蹈�
 3. 候选点：定格（一个动作刚做完、停住）、大动作（动作最猛的一下）、转身（背对镜头）；离节拍近的加分，离重拍近的再加分，0.12 秒内就对到拍上
 结果按视频内容缓存（内存 + 小文件），同一个视频第二次直接出。"""
 import hashlib, json, os, subprocess, sys, threading, time
+import config  # noqa: E402  路径（开源泛化 ①，studio/config.py）
 import numpy as np
 
 NO_WINDOW = 0x08000000 if os.name == 'nt' else 0
@@ -142,13 +143,13 @@ def accents(x, bt, db, sr=22050):
 def beats_bt(x, sr=22050, threads=None):
     """Beat This!（ISMIR 2024，tools/beat_this_lib + models/beat_this/final0.ckpt，CPU）→ (节拍, 重拍, BPM)；用不了时返回 None"""
     global _BT
-    ck = os.path.join(ROOT, 'models', 'beat_this', 'final0.ckpt')
+    ck = config.models('beat_this', 'final0.ckpt')
     if x is None or not os.path.isfile(ck):
         return None
     try:
         with _bt_lock:
             if _BT is None:
-                lib = os.path.join(ROOT, 'tools', 'beat_this_lib')
+                lib = config.tools('beat_this_lib')
                 if lib not in sys.path:
                     sys.path.append(lib)
                 from beat_this.inference import Audio2Beats
@@ -241,7 +242,7 @@ def track(path, ffmpeg, w, h, fps, threads=None, key=None):
     return np.array(out) if out else np.zeros((0, 133, 3))
 
 
-COMFY_PY = os.path.join(ROOT, 'tools', 'ComfyUI_windows_portable', 'python_embeded', 'python.exe')
+COMFY_PY = config.COMFY_PY
 _gpu = {'p': None, 'lock': threading.Lock()}
 
 
@@ -513,12 +514,12 @@ def _analyze(path, ffmpeg, probe, cache_dir=None, bg=False, studio_idle=None):
 # 15 秒的卡点舞通常整段只有一个段落（十一酱那段只找到一段），但切换的可能性在用户分段的 5.1 / 6.9 秒正好有小峰；
 # 所以只当一个特征，交给按用户选段学出来的偏好去定权重（segpref.py），手写的推荐规则不变。旧的分析结果补算这一项，不用重算动作。
 _sec_busy = {}
-A1_LIB = os.path.join(ROOT, 'tools', 'allin1_lib', 'allin1_infer')
+A1_LIB = config.tools('allin1_lib', 'allin1_infer')
 
 
 def sections(path, ffmpeg, threads, tmp_dir, bg=False):
     """→ {'sections': [[开始, 结束, 标签]…], 'act': […], 'fps': 50}；装不了 / 没有声音 / 出错时 None"""
-    if not os.path.isdir(A1_LIB) or not os.path.isdir(os.path.join(ROOT, 'models', 'allin1')):
+    if not os.path.isdir(A1_LIB) or not os.path.isdir(config.models('allin1')):
         return None
     import shutil, uuid
     d = os.path.join(tmp_dir, 'a1_' + uuid.uuid4().hex[:8]); os.makedirs(d, exist_ok=True)

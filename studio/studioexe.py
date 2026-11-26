@@ -11,13 +11,15 @@ Conda 升级 Python 后复制的那份会过时：记下复制时原文件的大
       python -I studio/studioexe.py --force
 """
 import json
+import os as _os, sys as _sys; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))  # 用 -I 启动时脚本所在的文件夹不在搜索路径里
+import config  # noqa: E402  路径（开源泛化 ①，studio/config.py）
 import os
 import shutil
 import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RCEDIT = os.path.join(ROOT, 'tools', 'rcedit', 'rcedit-x64.exe')
+RCEDIT = config.tools('rcedit', 'rcedit-x64.exe')
 ICON = os.path.join(ROOT, 'studio', 'web', 'app.ico')
 NO_WINDOW = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
 TARGETS = [('pythonw.exe', 'Studio.exe', 'Studio'), ('python.exe', 'StudioServer.exe', 'Studio 后台')]

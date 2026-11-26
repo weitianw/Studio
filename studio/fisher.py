@@ -9,11 +9,12 @@
 “我的图库”“我的姿势”按空间分开存（私密空间的存在私密空间里）。
 出图不在这里：生图页拿到人偶图后，当图 1 交给 Qwen 2.1（加 VNCCS PoseStudio LoRA），见 q21.py。"""
 import json, os, re, time
+import config  # noqa: E402  路径（开源泛化 ①，studio/config.py）
 from email.parser import BytesParser
 from email.policy import default as email_default
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PLUGIN = os.path.join(ROOT, 'tools', 'ComfyUI_windows_portable', 'ComfyUI', 'custom_nodes', 'ComfyUI-Fisher-Pose')
+PLUGIN = config.comfy('ComfyUI', 'custom_nodes', 'ComfyUI-Fisher-Pose')
 WEB = os.path.join(PLUGIN, 'web')
 BUILTIN = os.path.join(PLUGIN, 'FISHER小彩蛋')
 DATA_ROOT = None  # 由 server.py 设：DATA_ROOT(sp) → 这个空间的数据文件夹（普通空间 outputs，私密空间 .data），下面再建 fisher 子文件夹

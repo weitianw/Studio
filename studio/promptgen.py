@@ -6,11 +6,13 @@
 - 预设（system prompt）：可以有很多套，随时改；两个空间各存各的（私密空间的存在隐藏的 .data 里）。
 - 参数：温度、top_p、top_k、min_p、重复惩罚、最多写多少字、种子、思考模式、上下文长度、KV 缓存精度、MTP 加速，网页上都能调。"""
 import json, os, socket, subprocess, threading, time, urllib.error, urllib.request, uuid
+import config  # noqa: E402  路径（开源泛化 ①，studio/config.py）
 
 STUDIO = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(STUDIO)
-LLAMA = os.path.join(ROOT, 'llama.cpp', 'llama-server.exe')
-MODEL_DIR = os.path.join(ROOT, 'models', 'Huihui-Qwen3.8-27B-abliterated')
+LLAMA = config.LLAMA_SERVER
+import catalog, glob  # noqa: E402  开源泛化 ②：可选的模型在 catalog/llm.json + models/llm/
+MODEL_DIR = config.models('Huihui-Qwen3.8-27B-abliterated')  # 下面三项 = 目录里第一个（默认）模型，旧代码兼容用
 MMPROJ = 'mmproj-model-bf16.gguf'  # 识图部分（0.93GB）：放内存、用处理器算，不占显存
 MODEL_FILE = 'Huihui-Qwen3.8-27B-abliterated-Q4_K_L.gguf'  # 20.9GB：8K 上下文约占 22.8GB 显存，别开到 16K 以上
 MODEL_NAME = 'Qwen3.8 27B（huihui abliterated · Q4_K_L）'
@@ -81,8 +83,47 @@ def gpu_prepare():  # 由 server.py 换成“启动前让配音引擎放掉模�
 GPU_CTX = None  # 由 server.py 换成 imagegen.audio_gpu：写的时候生图让开
 
 
-def available():
-    return os.path.isfile(LLAMA) and os.path.isfile(os.path.join(MODEL_DIR, MODEL_FILE))
+DEFAULT_MODEL = 'qwen38-27b'
+
+
+def llm_models():
+    """可选的提示词模型 {id: {name, dir, file, mmproj, mtp, gpu, source}}：目录里的（自带 / 功能包 / 用户）+ models/llm/ 下自己放的 .gguf"""
+    out = {k: dict(m) for k, m in catalog.load('llm')['models'].items() if m.get('file')}
+    seen = {os.path.normcase(os.path.join(m.get('dir') or '', m['file'])) for m in out.values()}
+    for p in sorted(glob.glob(config.models('llm', '**', '*.gguf'), recursive=True)):
+        b = os.path.basename(p)
+        rel = os.path.relpath(p, config.MODELS_DIR)
+        if b.lower().startswith('mmproj') or os.path.normcase(rel) in seen:
+            continue
+        mm = sorted(x for x in os.listdir(os.path.dirname(p)) if x.lower().startswith('mmproj') and x.lower().endswith('.gguf'))
+        out['gguf:' + rel.replace('\\', '/')] = {'name': os.path.splitext(b)[0], 'dir': os.path.dirname(rel), 'file': b, 'mmproj': mm[0] if mm else None,
+                                                 'gpu': 'fit', 'source': 'folder'}
+    return out
+
+
+def model_info(mid=None):
+    """选中的模型（没选 / 选的不在了 → 默认的；默认的也不在 → 第一个）"""
+    ms = llm_models()
+    return ms.get(mid) or ms.get(DEFAULT_MODEL) or next(iter(ms.values()), None)
+
+
+def model_path(m):
+    return config.models(m.get('dir') or '', m['file'])
+
+
+def model_list():
+    """网页上的下拉框用：[{id, name, gb, vision, have}]"""
+    out = []
+    for k, m in llm_models().items():
+        p = model_path(m)
+        out.append({'id': k, 'name': m.get('name') or k, 'gb': round(os.path.getsize(p) / 1e9, 1) if os.path.isfile(p) else None,
+                    'vision': bool(m.get('mmproj')), 'have': os.path.isfile(p), 'source': m.get('source')})
+    return out
+
+
+def available(mid=None):
+    m = model_info(mid)
+    return os.path.isfile(LLAMA) and bool(m) and os.path.isfile(model_path(m))
 
 
 # ---------------------------------------------------------------- 引擎进程
@@ -112,26 +153,27 @@ class Engine:
             cls.last = time.time()
             if cls.running() and cls.alive() and (cls.cfg == cfg or cls.busy > 1):
                 return
-            if not available():
-                raise RuntimeError('尚未安装提示词模型（models/Huihui-Qwen3.8-27B-abliterated）或 llama.cpp')
+            m = model_info(cfg.get('model'))
+            if not available(cfg.get('model')):
+                raise RuntimeError('尚未安装提示词模型（models/' + ((m or {}).get('dir') or 'llm').replace(os.sep, '/') + '）或 llama.cpp')
             cls._stop()
             if _port_open():
                 KILL_PORT(PORT, 'llama-server.exe')  # 上次没关干净的
             gpu_prepare()
-            act(f'启动提示词模型 {MODEL_NAME}（约 10~30 秒）…', 'prompt')
+            act(f"启动提示词模型 {m.get('name') or MODEL_NAME}（约 10~30 秒）…", 'prompt')
             try:
                 if os.path.isfile(LOG) and os.path.getsize(LOG):
                     os.replace(LOG, LOG + '.prev')
             except OSError:
                 pass
-            ngl = ['-ngl', 'auto', '-fit', 'on', '-fitt', '1024'] if cfg.get('gpu') == 'fit' else ['-ngl', '99']
-            base = [LLAMA, '-m', os.path.join(MODEL_DIR, MODEL_FILE), *ngl, '-c', str(cfg['ctx']), '-np', '1', '-fa', 'auto',
+            ngl = ['-ngl', 'auto', '-fit', 'on', '-fitt', '1024'] if cfg.get('gpu') == 'fit' or m.get('gpu') == 'fit' else ['-ngl', '99']
+            base = [LLAMA, '-m', model_path(m), *ngl, '-c', str(cfg['ctx']), '-np', '1', '-fa', 'auto',
                     '--host', '127.0.0.1', '--port', str(PORT), '--jinja', '--reasoning-format', 'deepseek', '--no-webui',
                     '-ctk', cfg['kv'], '-ctv', cfg['kv']]
             if cfg.get('ubatch', 512) != 512:
                 base += ['-ub', str(cfg['ubatch'])] + (['-b', str(cfg['ubatch'])] if cfg['ubatch'] > 2048 else [])
-            if vision():
-                base += ['--mmproj', os.path.join(MODEL_DIR, MMPROJ), '--no-mmproj-offload']
+            if vision(cfg.get('model')):
+                base += ['--mmproj', config.models(m.get('dir') or '', m['mmproj']), '--no-mmproj-offload']
                 if cfg.get('img_min'):
                     base += ['--image-min-tokens', str(cfg['img_min'])]
                 if cfg.get('img_max'):
@@ -141,7 +183,7 @@ class Engine:
                 mtp += ['--spec-draft-n-max', str(cfg['draft_n'])]
             if cfg.get('draft_pmin'):
                 mtp += ['--spec-draft-p-min', str(cfg['draft_pmin'])]
-            tries = [base + mtp, base] if cfg['mtp'] else [base]
+            tries = [base + mtp, base] if cfg['mtp'] and m.get('mtp') else [base]  # MTP 只给支持的模型
             err = ''
             for args in tries:
                 log = open(LOG, 'w', encoding='utf-8', errors='replace')
@@ -536,11 +578,13 @@ def clamp_engine(c):
     return {'ctx': max(2048, min(CTX_CHOICES[-1], ctx // 1024 * 1024)), 'kv': c.get('kv') if c.get('kv') in KV_TYPES else E['kv'],
             'mtp': bool(c.get('mtp', E['mtp'])), 'draft_n': num('draft_n', 1, 8), 'draft_pmin': round(num('draft_pmin', 0.0, 1.0, float), 2),
             'ubatch': c.get('ubatch') if c.get('ubatch') in UBATCH_CHOICES else E['ubatch'], 'img_min': img_min, 'img_max': img_max,
-            'gpu': c.get('gpu') if c.get('gpu') in ('all', 'fit') else E['gpu']}
+            'gpu': c.get('gpu') if c.get('gpu') in ('all', 'fit') else E['gpu'],
+            'model': c.get('model') if c.get('model') in llm_models() else DEFAULT_MODEL}
 
 
-def vision():
-    return os.path.isfile(os.path.join(MODEL_DIR, MMPROJ))
+def vision(mid=None):
+    m = model_info(mid)
+    return bool(m and m.get('mmproj') and os.path.isfile(config.models(m.get('dir') or '', m['mmproj'])))
 
 
 MAX_IMAGES = 4  # 一条消息最多带几张图（多图改图最多 3 张，再留一张余量）

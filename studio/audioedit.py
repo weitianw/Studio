@@ -2,14 +2,15 @@ r"""改录音（腾讯 AuK-Flash，audio.cpp 跑，2026-11-03 加）：一句话
 指令按 AuK 官方 Cookbook 的写法（中文）：把‘原文’改成‘新文’ / 在‘锚点’后面加上‘内容’ / 删掉‘内容’；也可以直接写其它编辑指令（比如“语速放慢一点”）。
 不进配音引擎（8080，正在用的 Studio 共用）：每次用 audiocpp_cli 单独跑一遍（载入约十几秒），用完显存就还回去。"""
 import datetime, json, os, subprocess, threading, time, uuid, wave
+import config  # noqa: E402  路径（开源泛化 ①，studio/config.py）
 
 import stages
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CLI = os.path.join(ROOT, 'audio.cpp', 'audiocpp_cli.exe')
-MODEL_DIR = os.path.join(ROOT, 'models', 'AuK-Base-and-Flash-GGUF')
+CLI = config.audiocpp('audiocpp_cli.exe')
+MODEL_DIR = config.models('AuK-Base-and-Flash-GGUF')
 FILES = ['auk-base-q8_0.gguf', 'qwen2.5-omni-3b-q8_0.gguf', 'auk-vae-f32.gguf', 'config/auk-flash.yaml', 'tokenizer/tokenizer.json']
-FFMPEG = os.path.join(ROOT, 'tools', 'ffmpeg', 'bin', 'ffmpeg.exe')
+FFMPEG = config.FFMPEG
 NO_WINDOW = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
 VARIANT = 'base'  # base（32 步 + 引导，一次约 8 秒）/ flash（4 步，约 5 秒）。2026-11-03 A/B：把‘一盏路灯’改成‘两盏红灯笼’，base 3/3 对，flash 只有 2/6（会说成“一两盏”“一盏盏”）
 jobs = {}

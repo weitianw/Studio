@@ -8518,7 +8518,8 @@ function pgSide() {
     </details>
     <div class="row" style="justify-content:flex-end;margin-top:8px;gap:6px"><button type="button" class="btn small ghost" id="pg-rec" title="Qwen 官方推荐：思考 1.0 / 0.95 / 20，不思考 0.7 / 0.8 / 20，存在惩罚 1.5">官方推荐</button><button type="button" class="btn small ghost" id="pg-reset">恢复默认</button></div></div>
     <div class="pg-sd-b"><h3 class="card-title">模型设置</h3>
-    <div class="tiny" style="margin-bottom:8px">${esc(PGST.model || '')}</div>
+    ${(PGST.models || []).length > 1 ? `<label class="field"><span class="label">模型</span><select class="select" id="pg-model">${PGST.models.map(m => `<option value="${esc(m.id)}"${m.id === E.model ? ' selected' : ''}${m.have ? '' : ' disabled'}>${esc(m.name)}${m.gb ? ' · ' + m.gb + ' GB' : ''}</option>`).join('')}</select></label>`  // 开源泛化 ②：有多个模型时可以换
+      : `<div class="tiny" style="margin-bottom:8px">${esc(PGST.model || '')}</div>`}
     <div class="ig-2"><label class="field"><span class="label">上下文长度${hintHtml('此模型的 KV 缓存很小：8K→16K 仅多占约 0.3GB，32K 约 1.1GB（显存紧张）。修改后将在下次启动模型时生效。', 'sm')}</span><select class="select" id="pg-ctx">${[...new Set([...(PGST.ctx_choices || [4096, 8192, 16384]), ...(E.ctx ? [E.ctx] : [])])].sort((x, y) => x - y).map(n => `<option value="${n}"${E.ctx === n ? ' selected' : ''}>${n % 1024 ? n : n / 1024 + 'K'}${n >= 32768 ? '（显存紧张）' : ''}</option>`).join('')}</select></label>
       <label class="field"><span class="label">KV 缓存精度</span><select class="select" id="pg-kv">${(PGST.kv_types || []).map(k => `<option${E.kv === k ? ' selected' : ''}>${k}</option>`).join('')}</select></label></div>
     <div class="row" style="gap:10px;align-items:center;flex-wrap:wrap"><label class="row ig-check"><input type="checkbox" id="pg-mtp"${E.mtp ? ' checked' : ''}> MTP 加速${hintHtml('模型自带的多 token 预测，输出更快；无法启动时将自动关闭。草稿长度即每次预测的 token 数，接受率高时调大可进一步提速。', 'sm')}</label>
@@ -8540,10 +8541,10 @@ function pgSide() {
   const eng = async () => {
     $('#pg-mtp-o').hidden = !$('#pg-mtp').checked;
     const n = id => { const el = $(id); return el ? +el.value || 0 : undefined; };
-    try { PGST.engine = await api('/api/prompt/engine', { body: { ...E, ctx: +$('#pg-ctx').value, kv: $('#pg-kv').value, mtp: $('#pg-mtp').checked, draft_n: n('#pg-dn') || 3, draft_pmin: n('#pg-dp'), ubatch: +$('#pg-ub').value,
+    try { PGST.engine = await api('/api/prompt/engine', { body: { ...E, model: $('#pg-model')?.value || E.model, ctx: +$('#pg-ctx').value, kv: $('#pg-kv').value, mtp: $('#pg-mtp').checked, draft_n: n('#pg-dn') || 3, draft_pmin: n('#pg-dp'), ubatch: +$('#pg-ub').value,
       gpu: $('#pg-gpu button.on')?.dataset.g || 'all', ...(PGST.vision ? { img_min: n('#pg-imin'), img_max: n('#pg-imax') } : {}) } }); Object.assign(E, PGST.engine); toast('已保存，下次启动模型时生效'); } catch (e) { toast(e.message, true); }
   };
-  ['#pg-ctx', '#pg-kv', '#pg-mtp', '#pg-dn', '#pg-dp', '#pg-ub', '#pg-imin', '#pg-imax'].forEach(id => { const el = $(id, box); if (el) el.onchange = eng; });
+  ['#pg-model', '#pg-ctx', '#pg-kv', '#pg-mtp', '#pg-dn', '#pg-dp', '#pg-ub', '#pg-imin', '#pg-imax'].forEach(id => { const el = $(id, box); if (el) el.onchange = eng; });
   $$('#pg-gpu button', box).forEach(b => b.onclick = () => { $$('#pg-gpu button', box).forEach(x => x.classList.toggle('on', x === b)); eng(); });
   { const more = $('details.pg-more', box), sm = more && $('summary', more);
     if (sm) { const f = k => $(`[data-k="${k}"]`, box)?.closest('.field'); [f('top_p'), $('[data-n="top_k"]', box)?.closest('label'), f('min_p'), f('presence_penalty'), f('repeat_penalty')].filter(Boolean).reverse().forEach(el => sm.after(el)); }

@@ -1,0 +1,340 @@
+{
+ "_comment": "生图模型目录（ComfyUI 运行）。families = 各底子共用的文本编码器 / VAE；models = 每个模型的主模型文件、推荐设置和说明。路径相对 ComfyUI/models/<文件夹>。用户自己加的模型写在 studio/user-models.json（同样的格式），功能包的在 studio/packs/<包>/catalog/image.json。",
+ "families": {
+  "q21": {
+   "name": "Qwen-Image 2.1",
+   "te": "Qwen_Image_2.1\\qwen3vl_8b_bf16.safetensors",
+   "vae": "Qwen_Image_2.1\\qwen_image_2.1_vae_bf16.safetensors",
+   "modes": [
+    "txt",
+    "edit",
+    "inpaint"
+   ],
+   "folder": "diffusion_models"
+  },
+  "moss": {
+   "te": "MOSS\\qwen3.5_9b_int8_convrot.safetensors",
+   "type": "moss_image",
+   "vae": "MOSS\\flux2-vae.safetensors",
+   "folder": "diffusion_models",
+   "name": "MOSS Image"
+  },
+  "h3img": {
+   "te": "qwen3vl_32b_minimax_h3_int8_convrot.safetensors",
+   "type": "minimax",
+   "vae": "H3_Image\\minimax_h3_image_vae_fp16.safetensors",
+   "folder": "diffusion_models",
+   "name": "MiniMax H3-Image"
+  },
+  "zimg": {
+   "te": "Z_Image\\qwen_3_4b.safetensors",
+   "type": "lumina2",
+   "vae": "Z_Image\\ae.safetensors",
+   "folder": "diffusion_models",
+   "name": "Z-Image Turbo"
+  },
+  "krea2": {
+   "te": "Krea2\\qwen3vl_4b_fp8_scaled.safetensors",
+   "type": "krea2",
+   "vae": "Krea2\\qwen_image_vae.safetensors",
+   "folder": "diffusion_models",
+   "name": "Krea 2"
+  },
+  "ckpt": {
+   "name": "Checkpoint (SD 1.5 / SDXL / Pony)",
+   "loader": "checkpoint",
+   "folder": "checkpoints",
+   "modes": [
+    "txt"
+   ],
+   "lora_sub": "",
+   "settings": {
+    "txt": {
+     "steps": 25,
+     "cfg": 6.5,
+     "sampler": "dpmpp_2m",
+     "scheduler": "karras",
+     "mp": null
+    }
+   }
+  }
+ },
+ "models": [
+  {
+   "id": "q21-fast",
+   "name": "Qwen 2.1 · 快速",
+   "base": "Qwen-Image 2.1",
+   "family": "q21",
+   "modes": [
+    "txt",
+    "edit",
+    "inpaint"
+   ],
+   "speed": "约 1.5~2.5 分钟",
+   "tag": "快一倍，脸改动稍多",
+   "desc": "Ray 的 Qwen-Image 2.1 改图强化加速版（int8，30 步）：效果接近高质量版、快一倍，但脸比高质量版改得多一些",
+   "defaults": {
+    "steps": 30,
+    "cfg": 1.0,
+    "sampler": "euler_ancestral",
+    "scheduler": "simple"
+   },
+   "unet": "Qwen_Image_2.1\\Ray_Qwen21_edit_turbo_v1.3_int8convrot.safetensors",
+   "settings": {
+    "txt": {
+     "steps": 30,
+     "sampler": "euler_ancestral",
+     "scheduler": "simple",
+     "mp": 2.0
+    },
+    "edit": {
+     "steps": 30,
+     "sampler": "euler_ancestral",
+     "scheduler": "simple",
+     "mp": 3.0
+    },
+    "inpaint": {
+     "steps": 30,
+     "sampler": "euler_ancestral",
+     "scheduler": "simple",
+     "res": 1536,
+     "crop": 1.5,
+     "denoise": 1.0
+    }
+   }
+  },
+  {
+   "id": "q21",
+   "name": "Qwen 2.1 · 高质量",
+   "base": "Qwen-Image 2.1",
+   "family": "q21",
+   "modes": [
+    "txt",
+    "edit",
+    "inpaint"
+   ],
+   "speed": "文生图约 40 秒",
+   "tag": "脸和姿势最准",
+   "desc": "阿里 Qwen-Image 2.1 官方模型（int8，ComfyUI 运行）：文生图、按指令改图（最多 3 张图）、局部重画都能做。实测比 v23 脸更像、姿势更准，改图时脸和背景基本不变；int8 与原精度 bf16 出图几乎一样、快一倍。参数按老王论坛作者的设置",
+   "defaults": {
+    "steps": 50,
+    "cfg": 1.0,
+    "sampler": "euler",
+    "scheduler": "simple"
+   },
+   "unet": "Qwen_Image_2.1\\qwen_image_2.1_int8_convrot.safetensors",
+   "settings": {
+    "txt": {
+     "steps": 30,
+     "sampler": "euler",
+     "scheduler": "simple",
+     "mp": 2.0
+    },
+    "edit": {
+     "steps": 50,
+     "sampler": "euler",
+     "scheduler": "simple",
+     "mp": 3.0
+    },
+    "inpaint": {
+     "steps": 40,
+     "sampler": "euler",
+     "scheduler": "simple",
+     "res": 1536,
+     "crop": 1.5,
+     "denoise": 1.0
+    }
+   }
+  },
+  {
+   "id": "moss",
+   "name": "MOSS SFT",
+   "base": "MOSS Image",
+   "family": "moss",
+   "modes": [
+    "txt"
+   ],
+   "speed": "约 45 秒",
+   "tag": "中国审美的脸",
+   "desc": "MOSS Image 官方 SFT 版（int8，ComfyUI 运行，官方模板设置：25 步、CFG 2.5）：脸甜美清纯、照片感强；只做文生图。可在高级参数里加 LoRA（例如 Realistic Snapshot 0.8）",
+   "defaults": {
+    "steps": 25,
+    "cfg": 2.5,
+    "sampler": "er_sde",
+    "scheduler": "simple"
+   },
+   "refine": true,
+   "unet": "MOSS\\moss_image_sft_int8_convrot.safetensors",
+   "settings": {
+    "txt": {
+     "steps": 25,
+     "cfg": 2.5,
+     "sampler": "er_sde",
+     "scheduler": "simple",
+     "mp": null
+    }
+   }
+  },
+  {
+   "id": "moss-photo",
+   "name": "MOSS 写真",
+   "base": "MOSS Image",
+   "family": "moss",
+   "modes": [
+    "txt"
+   ],
+   "speed": "约 50 秒",
+   "tag": "胶片感、自然",
+   "desc": "MOSS SFT（int8）+ 老王论坛作者的一套写真 LoRA（观澜、feverdream、kuukiikan 空气感、TJFilm 胶片）和设置（CFG 3、偏移 5、跳层引导），200 万像素、30 步：比原版自然，有胶片颗粒和柔光。脸偏东亚，插画风的提示词也会画成真人",
+   "defaults": {
+    "steps": 30,
+    "cfg": 3.0,
+    "sampler": "er_sde",
+    "scheduler": "simple"
+   },
+   "refine": true,
+   "fixed_loras": [
+    [
+     "MOSS\\feverdream-epoch-07.safetensors",
+     0.45
+    ],
+    [
+     "MOSS\\KOOK-MOSS-SFT-观澜.safetensors",
+     0.8
+    ],
+    [
+     "MOSS\\kuukiikan_亚洲空气感写真style_moss_v1-step000320.safetensors",
+     0.3
+    ],
+    [
+     "MOSS\\TJFilmMoss_V1.safetensors",
+     0.15
+    ]
+   ],
+   "unet": "MOSS\\moss_image_sft_int8_convrot.safetensors",
+   "settings": {
+    "txt": {
+     "steps": 30,
+     "cfg": 3.0,
+     "sampler": "er_sde",
+     "scheduler": "simple",
+     "mp": 2.0,
+     "shift": 5,
+     "slg": [
+      "22",
+      0.0,
+      0.5
+     ]
+    }
+   }
+  },
+  {
+   "id": "krea2",
+   "name": "Krea 2 Turbo 官方",
+   "base": "Krea 2",
+   "family": "krea2",
+   "modes": [
+    "txt"
+   ],
+   "speed": "约 10 秒",
+   "tag": "提示词理解好、快",
+   "desc": "Krea 2 Turbo 官方模型（int8，ComfyUI 运行，官方模板设置：8 步、CFG 1）。只做文生图；LoRA 放在 models/Krea2/loras（Civitai 商店的 Krea 2 LoRA 也下载到这里）",
+   "defaults": {
+    "steps": 8,
+    "cfg": 1.0,
+    "sampler": "euler",
+    "scheduler": "simple"
+   },
+   "unet": "Krea2\\krea2_turbo_int8_convrot.safetensors",
+   "settings": {
+    "txt": {
+     "steps": 8,
+     "sampler": "euler",
+     "scheduler": "simple",
+     "mp": null
+    }
+   }
+  },
+  {
+   "id": "h3img",
+   "name": "H3-Image",
+   "base": "MiniMax H3-Image",
+   "family": "h3img",
+   "modes": [
+    "txt"
+   ],
+   "speed": "约 25 秒",
+   "tag": "写实、快",
+   "desc": "MiniMax H3-Image（int8，6 步，ComfyUI 运行）：写实、快；按所选宽高比出约 415 万像素的图。只做文生图。生视频的 H3 LoRA 也能用（放在 ComfyUI/models/loras/H3_Image）",
+   "defaults": {
+    "steps": 6,
+    "cfg": 1.0,
+    "sampler": "euler",
+    "scheduler": "simple"
+   },
+   "unet": "H3_Image\\minimax_h3_image_pruned_int8_convrot.safetensors",
+   "settings": {
+    "txt": {
+     "steps": 6,
+     "sampler": "euler",
+     "scheduler": "simple",
+     "mp": 4.15
+    }
+   }
+  },
+  {
+   "id": "zit-official",
+   "name": "Z-Image Turbo 官方原版",
+   "base": "Z-Image Turbo",
+   "family": "zimg",
+   "modes": [
+    "txt"
+   ],
+   "speed": "约 15 秒",
+   "tag": "原版画风",
+   "desc": "阿里通义 Z-Image Turbo 官方原版（bf16，ComfyUI 运行，官方模板设置：8 步、CFG 1）：用官方文本编码器。只做文生图",
+   "defaults": {
+    "steps": 8,
+    "cfg": 1.0,
+    "sampler": "res_multistep",
+    "scheduler": "simple"
+   },
+   "unet": "Z_Image\\z_image_turbo_bf16.safetensors",
+   "settings": {
+    "txt": {
+     "steps": 8,
+     "sampler": "res_multistep",
+     "scheduler": "simple",
+     "mp": null
+    }
+   }
+  },
+  {
+   "id": "zit-diving",
+   "name": "Diving v7",
+   "base": "Z-Image Turbo",
+   "family": "zimg",
+   "modes": [
+    "txt"
+   ],
+   "speed": "约 15 秒",
+   "tag": "亚洲脸",
+   "desc": "Diving 的 Z-Image Turbo 亚洲人像微调（v7，ComfyUI 运行，官方模板设置）：脸好看。只做文生图",
+   "defaults": {
+    "steps": 8,
+    "cfg": 1.0,
+    "sampler": "res_multistep",
+    "scheduler": "simple"
+   },
+   "unet": "Z_Image\\DivingZImageTurbo_v7_fp16.safetensors",
+   "settings": {
+    "txt": {
+     "steps": 8,
+     "sampler": "res_multistep",
+     "scheduler": "simple",
+     "mp": null
+    }
+   }
+  }
+ ]
+}

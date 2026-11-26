@@ -10,7 +10,7 @@
   // Ctrl+1 ~ Ctrl+9 = 一级的第几个；Ctrl+K = 搜索页面。页面的图标和名字取自 index.html 里原来的那几项
   const nav = rail.querySelector('.rnav'), PG = {};
   nav.querySelectorAll('a[data-page]').forEach(a => { const s = a.querySelector('svg'); PG[a.dataset.page] = { n: a.querySelector('span')?.textContent.trim() || a.dataset.page, svg: s ? s.outerHTML : '' }; });
-  const GR = [['创作', ['tts', 'vc', 'img', 'video', 'audioedit', 'batch']], ['素材', ['works', 'voices', 'mats']], ['工具', ['prompt', 'stt']], ['', ['play']]];
+  const GR = [['创作', ['tts', 'vc', 'img', 'video', 'audioedit', 'batch']], ['素材', ['works', 'voices', 'mats']], ['工具', ['prompt', 'stt', 'models']], ['', ['play']]];
   const NAV0 = ['play', 'img', 'video', 'mats', 'prompt'], NAV_MAX = 7;
   const SV = d => `<svg class="ri" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
   const DOTS = SV('<circle cx="5.5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18.5" cy="12" r="1.2"/>');

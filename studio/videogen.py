@@ -8,12 +8,13 @@
 - 私密空间：原图、成品都只放在私密空间自己的文件夹；ComfyUI 输入 / 输出文件夹里的临时文件做完立刻删掉。
 """
 import base64, datetime, json, os, random, re, shutil, socket, struct, subprocess, threading, time, urllib.error, urllib.request, uuid
+import config  # noqa: E402  路径（开源泛化 ①，studio/config.py）
 import stages  # 任务计时（每一步用了多久）
 import prompttrace
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 STUDIO = os.path.join(ROOT, 'studio')
-COMFY_DIR = os.path.join(ROOT, 'tools', 'ComfyUI_windows_portable')
+COMFY_DIR = config.COMFY_PORTABLE
 COMFY_PY = os.path.join(COMFY_DIR, 'python_embeded', 'python.exe')
 COMFY_MAIN = os.path.join(COMFY_DIR, 'ComfyUI', 'main.py')
 MODELS_DIR = os.path.join(COMFY_DIR, 'ComfyUI', 'models')
@@ -109,11 +110,11 @@ def interp_ok():
 
 UPSCALER = 'upscale_models/RealESRGAN_x2plus.pth'  # 超分 2 倍（Real-ESRGAN x2plus，67MB）；没有或太大时用 ffmpeg 的 lanczos
 UPSCALE_MAX = 6e9  # 超分后整段视频在内存里的大小（float32）超过这个就改用 ffmpeg，免得把内存挤爆
-FFMPEG = os.path.join(ROOT, 'tools', 'ffmpeg', 'bin', 'ffmpeg.exe')
+FFMPEG = config.FFMPEG
 # 存进视频库的成品每 12 帧（24 fps 是半秒）一个关键帧：拖进度条直接就流畅，不用再另存一份播放副本
 # （同样画质只大约 7%，播放副本要多占 60%～100%；2026-11-06 用户：存储焦虑）
 GOP = ['-g', '12', '-keyint_min', '1']
-FFPROBE = os.path.join(ROOT, 'tools', 'ffmpeg', 'bin', 'ffprobe.exe')
+FFPROBE = config.FFPROBE
 # 采样器 / 调度器：引擎开着时从 /object_info 读（存一份）；还没读到时用这份
 SAMPLERS = ['euler', 'euler_ancestral', 'heun', 'dpm_2', 'dpm_2_ancestral', 'lms', 'dpmpp_2s_ancestral', 'dpmpp_sde', 'dpmpp_2m', 'dpmpp_2m_sde', 'dpmpp_3m_sde',
             'ddpm', 'lcm', 'ipndm', 'deis', 'res_multistep', 'res_multistep_ancestral', 'gradient_estimation', 'er_sde', 'sa_solver', 'ddim', 'uni_pc', 'uni_pc_bh2']

@@ -58,7 +58,8 @@ def test_old_wan_record_workflow(tmp_path):
     with patch.object(videogen, '_have', lambda f: True), patch.object(videogen.Engine, 'ensure', lambda *a, **k: None), \
             patch.object(videogen, 'sampler_options', lambda: None), patch.dict(videogen.WORK, {'n': str(tmp_path)}):
         wf = videogen._prep_job(j).wf
-    assert [n['inputs'].get('length') for n in wf.values() if n['class_type'].startswith('MiniMaxH3')] == [124]
+    # 装了 ② 秋叶节点时官方底模会多几个 MiniMaxH3 节点（没有 length）：有帧数的那些都是 124
+    assert [n['inputs']['length'] for n in wf.values() if n['class_type'].startswith('MiniMaxH3') and 'length' in n['inputs']] == [124]
     assert wf['7']['inputs']['last_frame'] == ['40', 0] and wf['40']['class_type'] == 'LoadImage'
     assert [n['inputs']['lora_name'] for n in wf.values() if n['class_type'] == 'LoraLoaderModelOnly' and n['inputs']['lora_name'] == 'my.safetensors'] == ['my.safetensors']
     assert '14' not in wf and not any(n['class_type'].startswith('Wan') for n in wf.values())

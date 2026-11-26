@@ -4,10 +4,11 @@
 - 脸、手：DWPose 全身 133 个关键点（脸 68 点、左右手各 21 点）→ 按点围出框；ControlNet 的姿势骨架也用它
 模型放在 models/detect/，第一次用到时才载入，之后留在内存里（约 500MB）。"""
 import os, threading
+import config  # noqa: E402  路径（开源泛化 ①，studio/config.py）
 import numpy as np
 from PIL import Image
 
-DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'models', 'detect')
+DIR = config.models('detect')
 FILES = {'det': 'yolox_l.onnx', 'pose': 'dw-ll_ucoco_384.onnx'}
 _s, _lock = {}, threading.Lock()
 

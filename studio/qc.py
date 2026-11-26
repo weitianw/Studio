@@ -8,12 +8,13 @@
 连续两帧以上才算（单独一帧的误报不报）。结果记在视频库这一条的 qc 里：{v, flags: [{a, b, kind, msg}], took}。
 """
 import os, subprocess, threading, time
+import config  # noqa: E402  路径（开源泛化 ①，studio/config.py）
 import numpy as np
 from PIL import Image
 
 FPS = 3
 KIND_MSG = {'person': '人物不见了', 'drift': '动作和原视频差得多', 'face': '长相和原视频差别大'}
-ARC = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'tools', 'ComfyUI_windows_portable', 'ComfyUI', 'models', 'insightface', 'models', 'buffalo_l', 'w600k_r50.onnx')
+ARC = config.comfy('ComfyUI', 'models', 'insightface', 'models', 'buffalo_l', 'w600k_r50.onnx')
 ARC_T = np.array([[38.2946, 51.6963], [73.5318, 51.5014], [56.0252, 71.7366], [41.5493, 92.3655], [70.7299, 92.2041]], np.float32)
 _arc = None
 _lock = threading.Lock()  # 一次只查一段（CPU 占用不叠加）

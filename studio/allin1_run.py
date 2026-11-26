@@ -4,9 +4,11 @@
 输出：{"sections": [[开始, 结束, 标签], …], "act": [段落切换的可能性，每秒 50 个], "fps": 50}
 代码 MIT；模型权重 CC-BY-NC-SA-4.0（只能非商业用），放在 models/allin1。"""
 import json, os, sys
+import os as _os, sys as _sys; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))  # 用 -I 启动时脚本所在的文件夹不在搜索路径里
+import config  # noqa: E402  路径（开源泛化 ①，studio/config.py）
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-os.environ['TORCH_HOME'] = os.path.join(ROOT, 'models', 'allin1')
-sys.path.append(os.path.join(ROOT, 'tools', 'allin1_lib'))
+os.environ['TORCH_HOME'] = config.models('allin1')
+sys.path.append(config.tools('allin1_lib'))
 src, out, thr, tmp = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
 import numpy as np, torch  # noqa: E402
 torch.set_num_threads(max(1, thr))

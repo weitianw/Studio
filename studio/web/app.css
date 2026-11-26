@@ -3773,6 +3773,9 @@ textarea.ig-ta-busy { animation: ig-ta-breathe 1.6s ease-in-out infinite; }
 #ig-enh-q.on { color: var(--blue); }
 /* 2026-11-15 用户：展开的输入框里“清空”×压在文字上 → 挪到上面“修改指令”那一行的右端 */
 .ig-top-f.open .clr-wrap.ta > .clr-x { top: -29px; right: -4px; transform: none; }
+/* 2026-11-26 用户：文生图时上面那一行是空的，× 挪上去就冒到输入框边框外面了 → 没有那一行时留在框里右上角，文字右边让出位置 */
+.ig-top-f.open:has(#ig-p-label:empty) .clr-wrap.ta > .clr-x { top: -3px; right: -6px; }
+.ig-grid.b5-on > .ig-top-f.open:has(#ig-p-label:empty) .clr-wrap.ta > textarea { padding-right: 26px !important; }
 /* 局部重画缩放涂抹（2026-11-16）：放大后左上角的百分比，点一下还原 */
 .ig-zoom-b { all: unset; position: absolute; left: 8px; top: 8px; z-index: 4; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #fff; background: rgba(0, 0, 0, .55); cursor: pointer; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
 .ig-zoom-b:hover { background: rgba(0, 0, 0, .72); }

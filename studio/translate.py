@@ -4,10 +4,12 @@
   第一次用时自动启动，闲置 10 分钟自动退出、释放显存。
 都是几十句拼成一批发送，按换行拆回每一句；对不上时这一批逐句重发。"""
 import contextlib, atexit, json, os, subprocess, threading, time, urllib.error, urllib.parse, urllib.request
+import os as _os, sys as _sys; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))  # 用 -I 启动时脚本所在的文件夹不在搜索路径里
+import config  # noqa: E402  路径（开源泛化 ①，studio/config.py）
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LLAMA = os.path.join(ROOT, 'llama.cpp', 'llama-server.exe')
-LOCAL_MODEL = os.path.join(ROOT, 'models', 'Index-Translate-9B-GGUF', 'Index-Translate-9B.Q4_K_M.gguf')
+LLAMA = config.LLAMA_SERVER
+LOCAL_MODEL = config.models('Index-Translate-9B-GGUF', 'Index-Translate-9B.Q4_K_M.gguf')
 LOCAL_PORT = 8093  # 和生图引擎（8091）分开
 IDLE_EXIT = 600
 NO_WINDOW = getattr(subprocess, 'CREATE_NO_WINDOW', 0)

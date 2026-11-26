@@ -1,0 +1,24 @@
+/* 模型页（开源泛化 ⑤）：行沿用设置页的 st-row；这里只有副标题、大小和“放不放得下”的小标签 */
+.md-wrap { max-width: 860px; }
+.md-hw { margin: 0 0 18px; color: var(--text-3); }
+.md-h { align-items: center; margin-bottom: 8px; }
+.md-h .st-h { margin: 0; }
+.md-row .st-l { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.md-row .st-l b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.md-sub { font-size: 12px; color: var(--text-3); }
+.md-row .st-r { gap: 10px; flex: none; }
+.md-gb { font-size: 12.5px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.md-fit { font-size: 12px; font-weight: 500; padding: 2px 9px; border-radius: 999px; white-space: nowrap; cursor: default; }
+.md-ok { color: #2f9e57; background: rgba(52, 199, 89, .14); }
+.md-tight { color: #b7791f; background: rgba(255, 159, 10, .16); }
+.md-no { color: #d9363e; background: rgba(255, 69, 58, .14); }
+.md-miss { color: var(--text-3); background: rgba(127, 127, 127, .14); }
+html[data-theme="dark"] .md-ok { color: #4cd37b; }
+html[data-theme="dark"] .md-tight { color: #ffb340; }
+html[data-theme="dark"] .md-no { color: #ff6961; }
+@media (hover: hover) { .md-row .md-hide { opacity: 0; transition: opacity .15s; } .md-row:hover .md-hide, .md-row .md-hide:focus-visible { opacity: 1; } }
+.md-hid { margin-top: 18px; }
+.md-hid > summary { cursor: pointer; margin-bottom: 8px; }
+.md-adv { margin: 4px 0 10px; }
+.md-adv > summary { cursor: pointer; margin-bottom: 8px; }
+.md-wait { padding: 24px 2px; }

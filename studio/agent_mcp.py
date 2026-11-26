@@ -9,8 +9,10 @@ Studio 没开就报错（不会替你启动 Studio）。用官方 MCP Python SDK
   python -I agent_mcp.py --clear-key     删掉存的密钥
 环境变量：STUDIO_URL（默认 http://127.0.0.1:7860）、STUDIO_SPACE（normal / private，默认 normal）"""
 import asyncio, ctypes, ctypes.wintypes as wt, json, os, sys, time, urllib.request, http.cookiejar
+import os as _os, sys as _sys; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))  # 用 -I 启动时脚本所在的文件夹不在搜索路径里
+import config  # noqa: E402  路径（开源泛化 ①，studio/config.py）
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(ROOT, 'tools', 'mcp_lib'))
+sys.path.insert(0, config.tools('mcp_lib'))
 URL = os.environ.get('STUDIO_URL', 'http://127.0.0.1:7860').rstrip('/')
 SPACE = 'private' if os.environ.get('STUDIO_SPACE', 'normal').lower() in ('private', 'v', 'vault') else 'normal'
 KEY_FILE = os.path.join(os.environ.get('LOCALAPPDATA') or os.path.expanduser('~'), 'StudioAgent', 'vault.dpapi')

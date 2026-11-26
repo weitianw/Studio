@@ -5,6 +5,7 @@
 - 每个下载的 LoRA 旁边放一个同名的 .civitai.json（触发词、推荐强度、作者、模型页地址、预览图），LoRA 列表里显示
 """
 import json, os, re, threading, time, urllib.error, urllib.parse, urllib.request, uuid
+import config  # noqa: E402  路径（开源泛化 ①，studio/config.py）
 from concurrent.futures import ThreadPoolExecutor
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -14,15 +15,15 @@ UA = 'Studio/1.0'
 # 网页上的“用在哪个模型” → Civitai 的 baseModel 和本地 LoRA 文件夹
 TARGETS = {
     # Wan 2.2 / Wan Animate / Bernini-R 的分类 2026-11-06 随 Wan 一起去掉了
-    'h3': {'name': 'MiniMax H3', 'base': ['MiniMax H3'], 'dir': os.path.join(ROOT, 'tools', 'ComfyUI_windows_portable', 'ComfyUI', 'models', 'loras')},
-    'zimage': {'name': 'Z-Image Turbo', 'base': ['ZImageTurbo'], 'dir': os.path.join(ROOT, 'models', 'Z-Image', 'loras')},
-    'krea': {'name': 'Krea 2', 'base': ['Krea 2', 'Flux.2 Krea'], 'dir': os.path.join(ROOT, 'models', 'Krea2', 'loras')},
-    'qedit': {'name': 'Qwen 指令改图', 'base': ['Qwen', 'Qwen Image Edit'], 'dir': os.path.join(ROOT, 'models', 'QwenEdit', 'loras')},
+    'h3': {'name': 'MiniMax H3', 'base': ['MiniMax H3'], 'dir': config.comfy('ComfyUI', 'models', 'loras')},
+    'zimage': {'name': 'Z-Image Turbo', 'base': ['ZImageTurbo'], 'dir': config.models('Z-Image', 'loras')},
+    'krea': {'name': 'Krea 2', 'base': ['Krea 2', 'Flux.2 Krea'], 'dir': config.models('Krea2', 'loras')},
+    'qedit': {'name': 'Qwen 指令改图', 'base': ['Qwen', 'Qwen Image Edit'], 'dir': config.models('QwenEdit', 'loras')},
     # Qwen-Image 2.1（文生图、指令改图、局部重画共用）：Civitai 的分类叫「Qwen 2.1」，少数作者选了「Qwen 2」
-    'q21': {'name': 'Qwen 2.1', 'base': ['Qwen 2.1', 'Qwen 2'], 'dir': os.path.join(ROOT, 'tools', 'ComfyUI_windows_portable', 'ComfyUI', 'models', 'loras', 'Qwen21')},
+    'q21': {'name': 'Qwen 2.1', 'base': ['Qwen 2.1', 'Qwen 2'], 'dir': config.comfy('ComfyUI', 'models', 'loras', 'Qwen21')},
     # 只做文生图的两个底子（2026-11-16）：MOSS 的 LoRA 在 Civitai 叫「MOSS Image」；H3-Image 用生视频 H3 的 LoRA（同一个底子），单独放一个文件夹
-    'moss': {'name': 'MOSS Image', 'base': ['MOSS Image'], 'dir': os.path.join(ROOT, 'tools', 'ComfyUI_windows_portable', 'ComfyUI', 'models', 'loras', 'MOSS')},
-    'h3img': {'name': 'H3-Image', 'base': ['MiniMax H3'], 'dir': os.path.join(ROOT, 'tools', 'ComfyUI_windows_portable', 'ComfyUI', 'models', 'loras', 'H3_Image')},
+    'moss': {'name': 'MOSS Image', 'base': ['MOSS Image'], 'dir': config.comfy('ComfyUI', 'models', 'loras', 'MOSS')},
+    'h3img': {'name': 'H3-Image', 'base': ['MiniMax H3'], 'dir': config.comfy('ComfyUI', 'models', 'loras', 'H3_Image')},
 }
 SORTS = {'downloads': 'Most Downloaded', 'rating': 'Highest Rated', 'new': 'Newest'}
 downloads = {}

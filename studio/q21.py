@@ -9,41 +9,61 @@
     ai       AI 助手直接写：不用增强小模型，AI 助手看图按官方增强的写法自己写
 """
 import base64, hashlib, io, json, os, random, re, threading, time, uuid
+import config  # noqa: E402  路径（开源泛化 ①，studio/config.py）
 import videogen as V
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-# 高质量版 2026-11-16 起用官方 int8（Comfy-Org 转的）：A/B 和 bf16 出图几乎一样、快一倍（docs/AB测试/生图底模_1115）
-UNET = {'q21': r'Qwen_Image_2.1\qwen_image_2.1_int8_convrot.safetensors',
-        'q21-fast': r'Qwen_Image_2.1\Ray_Qwen21_edit_turbo_v1.3_int8convrot.safetensors',
-        # 同样跑在 ComfyUI 上、只做文生图的两个底子（2026-11-16 用户从 A/B 里选的）
-        # MOSS 2026-11-23 起用 int8（A/B：和 bf16 画质看不出差、快 2.4 倍，docs/AB测试/MOSS_Krea2双采_1121）
-        'moss': r'MOSS\moss_image_sft_int8_convrot.safetensors',
-        'moss-photo': r'MOSS\moss_image_sft_int8_convrot.safetensors',
-        'h3img': r'H3_Image\minimax_h3_image_pruned_int8_convrot.safetensors',
-        # Krea 2 官方 Turbo：也是二采（润色）用的模型
-        'krea2': r'Krea2\krea2_turbo_int8_convrot.safetensors',
-        # Z-Image Turbo 官方原版 + Diving v7（亚洲脸微调）：照官方模板、用官方文本编码器
-        'zit-official': r'Z_Image\z_image_turbo_bf16.safetensors',
-        'zit-diving': r'Z_Image\DivingZImageTurbo_v7_fp16.safetensors'}
-FAMILY = {'q21': 'q21', 'q21-fast': 'q21', 'moss': 'moss', 'moss-photo': 'moss', 'h3img': 'h3img', 'krea2': 'krea2', 'zit-official': 'zimg', 'zit-diving': 'zimg'}
-# 各底子的文本编码器 / VAE / CLIPLoader 类型（MOSS、H3-Image 照 ComfyUI 官方模板）
-TXT_ONLY = {'moss': {'te': r'MOSS\qwen3.5_9b_int8_convrot.safetensors', 'type': 'moss_image', 'vae': r'MOSS\flux2-vae.safetensors'},  # 文本编码器 2026-11-23 起用 int8（用户定：少占约 9.5 GB 内存）
-            'h3img': {'te': 'qwen3vl_32b_minimax_h3_int8_convrot.safetensors', 'type': 'minimax', 'vae': r'H3_Image\minimax_h3_image_vae_fp16.safetensors'},
-            'zimg': {'te': r'Z_Image\qwen_3_4b.safetensors', 'type': 'lumina2', 'vae': r'Z_Image\ae.safetensors'},
-            'krea2': {'te': r'Krea2\qwen3vl_4b_fp8_scaled.safetensors', 'type': 'krea2', 'vae': r'Krea2\qwen_image_vae.safetensors'}}
+# 生图模型的表（开源泛化 ② 起从 studio/catalog/image.json + 功能包 + studio/user-models.json 读，见 catalog.py）。
+# 表的名字和格式照旧（UNET / FAMILY / TXT_ONLY / SETTINGS / MODELS，TE / VAE 是 Qwen 2.1 的文本编码器和 VAE），别的代码不用改；
+# 模型自己写了 te / vae 的放在 MODEL_TXT，用 txt_files(key) 取
+import catalog  # noqa: E402
+UNET, FAMILY, TXT_ONLY, SETTINGS, MODELS, MODEL_TXT, FAMILIES = {}, {}, {}, {}, {}, {}, {}
+TE = VAE = None
+_SHOW = ('name', 'base', 'speed', 'tag', 'family', 'modes', 'desc', 'defaults', 'refine', 'fixed_loras', 'source')
+
+
+def load_catalog():
+    """（重新）读模型目录，原地更新上面这几张表（别的模块拿着的引用照样有效）。返回模型数"""
+    global TE, VAE
+    c = catalog.load('image')
+    fams = c['families']
+    FAMILIES.clear(); FAMILIES.update(fams)
+    TE, VAE = (fams.get('q21') or {}).get('te'), (fams.get('q21') or {}).get('vae')
+    TXT_ONLY.clear(); TXT_ONLY.update({f: {'te': v['te'], 'type': v['type'], 'vae': v['vae']} for f, v in fams.items() if v.get('type')})
+    for d in (UNET, FAMILY, SETTINGS, MODELS, MODEL_TXT):
+        d.clear()
+    for k, m in c['models'].items():
+        fam = m.get('family')
+        if fam not in fams or not m.get('unet'):
+            continue
+        UNET[k], FAMILY[k] = m['unet'], fam
+        SETTINGS[k] = {mode: {a: (tuple(b) if a == 'slg' and isinstance(b, list) else b) for a, b in s.items()} for mode, s in m['settings'].items()}
+        e = {x: m[x] for x in _SHOW if x in m}
+        if 'fixed_loras' in e:
+            e['fixed_loras'] = [tuple(x) for x in e['fixed_loras']]
+        MODELS[k] = {**e, 'backend': 'comfy'}
+        if m.get('te') or m.get('vae'):
+            MODEL_TXT[k] = {x: m[x] for x in ('te', 'vae') if m.get(x)}
+    return len(MODELS)
+
+
+def txt_files(key):
+    """这个模型实际用的文本编码器 / VAE / CLIPLoader 类型：family 默认的，模型自己写了的优先"""
+    fam = FAMILY.get(key)
+    base = dict(TXT_ONLY.get(fam) or {'te': TE, 'vae': VAE, 'type': 'qwen_image'})
+    base.update(MODEL_TXT.get(key) or {})
+    return base
+
+
+load_catalog()
 # Z-Image 的 LoRA 和 sd.cpp 版共用 models\Z-Image\loras（ComfyUI 的 extra_model_paths.yaml 把它加进 loras，名字不带子文件夹）；Krea 2 的同样在 models\Krea2\loras
-ZIMG_LORA_DIR = os.path.join(os.path.dirname(HERE), 'models', 'Z-Image', 'loras')
-KREA_LORA_DIR = os.path.join(os.path.dirname(HERE), 'models', 'Krea2', 'loras')
+ZIMG_LORA_DIR = config.models('Z-Image', 'loras')
+KREA_LORA_DIR = config.models('Krea2', 'loras')
 BARE_LORA = {'zimg': ZIMG_LORA_DIR, 'krea2': KREA_LORA_DIR}  # 这几个底子的 LoRA 不在 ComfyUI/models/loras 里，名字不带子文件夹
-# 「MOSS 写真」= 老王论坛 MOSS × Krea2 双采作者的一采：4 个 LoRA（顺序和强度照作者）+ AuraFlow 偏移 5 + 跳层引导（单层 22，前 50%）
-MOSS_PHOTO_LORAS = [(r'MOSS\feverdream-epoch-07.safetensors', 0.45), (r'MOSS\KOOK-MOSS-SFT-观澜.safetensors', 0.8),
-                    (r'MOSS\kuukiikan_亚洲空气感写真style_moss_v1-step000320.safetensors', 0.3), (r'MOSS\TJFilmMoss_V1.safetensors', 0.15)]
 # 二采（Krea 2 润色）：作者的 5 个 Krea 2 LoRA（models\Krea2\loras）
 REFINE_LORAS = [('Krea_2_zidiusArt_Melancholy.safetensors', 0.35), ('TJFilmStyleKrea2_V2.safetensors', 1.0), ('realism_engine_krea2_v3.1.safetensors', 0.45),
                 ('krea2-Cc-MJ-影视柔光.safetensors', 0.6), ('grainscape_krea2.safetensors', 0.7)]
 H3IMG_NODE = os.path.join(os.path.dirname(V.MODELS_DIR), 'comfy_extras', 'nodes_minimax_h3.py')  # H3-Image 的节点：ComfyUI 2026-11-15 之后的版本才有
-TE = r'Qwen_Image_2.1\qwen3vl_8b_bf16.safetensors'
-VAE = r'Qwen_Image_2.1\qwen_image_2.1_vae_bf16.safetensors'
 PE = {'i2i': r'Qwen_VL\qwen3.5_9b_qwen_image_2.1_pe_i2i.int8_convrot.safetensors',
       't2i': r'Qwen_VL\qwen3.5_9b_qwen_image_2.1_pe_t2i.int8_convrot.safetensors'}
 # 提示词增强小模型 / 文本编码器的可选版本：'official' = 官方模型（默认）
@@ -75,25 +95,6 @@ SAM = 'sam3.1_multiplex_fp16.safetensors'  # 面部重绘自动找脸（改衣�
 # 每个模型、每种用法的设置（作者截图；快速版按 Ray 模型页：euler_ancestral、30 步）
 #   txt：200 万像素、30 步；edit：300 万像素、50 步，参考图先缩到 200 万像素、改图节点按 1280 看；
 #   inpaint：按涂抹范围外扩 1.5 倍裁剪、放大到 1536、40 步、降噪 1.0，画完拼回
-SETTINGS = {
-    'q21': {'txt': {'steps': 30, 'sampler': 'euler', 'scheduler': 'simple', 'mp': 2.0},
-            'edit': {'steps': 50, 'sampler': 'euler', 'scheduler': 'simple', 'mp': 3.0},
-            'inpaint': {'steps': 40, 'sampler': 'euler', 'scheduler': 'simple', 'res': 1536, 'crop': 1.5, 'denoise': 1.0}},
-    'q21-fast': {'txt': {'steps': 30, 'sampler': 'euler_ancestral', 'scheduler': 'simple', 'mp': 2.0},
-                 'edit': {'steps': 30, 'sampler': 'euler_ancestral', 'scheduler': 'simple', 'mp': 3.0},
-                 'inpaint': {'steps': 30, 'sampler': 'euler_ancestral', 'scheduler': 'simple', 'res': 1536, 'crop': 1.5, 'denoise': 1.0}},
-    # MOSS：官方模板 25 步、CFG 2.5、er_sde + simple；尺寸按网页选的（mp = None）
-    'moss': {'txt': {'steps': 25, 'cfg': 2.5, 'sampler': 'er_sde', 'scheduler': 'simple', 'mp': None}},
-    # MOSS 写真：作者的设置（CFG 3、er_sde + simple、偏移 5、跳层引导），200 万像素；A/B 里 30 步和作者的 50 步几乎一样
-    'moss-photo': {'txt': {'steps': 30, 'cfg': 3.0, 'sampler': 'er_sde', 'scheduler': 'simple', 'mp': 2.0, 'shift': 5, 'slg': ('22', 0.0, 0.5)}},
-    # Krea 2 Turbo：官方模板（ComfyUI blueprints/Text to Image (Krea-2 Turbo)）8 步、CFG 1、euler + simple，负面置零；尺寸按网页选的
-    'krea2': {'txt': {'steps': 8, 'sampler': 'euler', 'scheduler': 'simple', 'mp': None}},
-    # H3-Image：6 步蒸馏、不用 CFG；按 2048×2048 的面积调的，按所选宽高比出约 415 万像素（A/B 用 1664×2496）
-    'h3img': {'txt': {'steps': 6, 'sampler': 'euler', 'scheduler': 'simple', 'mp': 4.15}},
-    # Z-Image Turbo：官方模板 8 步、CFG 1、res_multistep + simple、AuraFlow shift 3；尺寸按网页选的
-    'zit-official': {'txt': {'steps': 8, 'sampler': 'res_multistep', 'scheduler': 'simple', 'mp': None}},
-    'zit-diving': {'txt': {'steps': 8, 'sampler': 'res_multistep', 'scheduler': 'simple', 'mp': None}},
-}
 REF_MP, REF_RES = 2.0, 1280
 # 2026-11-23 用户：设置不要都固定死，默认用推荐的，想改的时候能改（步数、像素等）。网页上改了的几项放在 j['q_over']，跑的时候盖在 SETTINGS 上
 Q_SAMPLERS = ['euler', 'euler_ancestral', 'er_sde', 'res_multistep', 'heun', 'dpmpp_2m', 'dpmpp_2m_sde', 'dpmpp_sde', 'dpmpp_3m_sde', 'uni_pc', 'lcm', 'ddim', 'gradient_estimation']
@@ -124,45 +125,6 @@ def clean_over(o, mode):
 ENHANCE = ('off', 'pe', 'ai')
 WITH_AI = ('ai',)  # 要 AI 助手的几档：ai = 不用增强小模型，它看图直接写
 
-# imagegen.MODELS 里的两项（backend = comfy：不走 sd.cpp）
-MODELS = {  # 快速版放前面：网页上自动换成 Qwen 2.1 时（组合指令、素材库组合、AI 助手填入）取第一个（2026-11-15 用户：默认用快速）
-    'q21-fast': {'name': 'Qwen 2.1 · 快速', 'base': 'Qwen-Image 2.1', 'speed': '约 1.5~2.5 分钟', 'tag': '快一倍，脸改动稍多', 'backend': 'comfy', 'family': 'q21',
-                 'modes': ['txt', 'edit', 'inpaint'],
-                 'desc': 'Ray 的 Qwen-Image 2.1 改图强化加速版（int8，30 步）：效果接近高质量版、快一倍，但脸比高质量版改得多一些',
-                 'defaults': {'steps': 30, 'cfg': 1.0, 'sampler': 'euler_ancestral', 'scheduler': 'simple'}},
-    'q21': {'name': 'Qwen 2.1 · 高质量', 'base': 'Qwen-Image 2.1', 'speed': '文生图约 40 秒', 'tag': '脸和姿势最准', 'backend': 'comfy', 'family': 'q21',
-            'modes': ['txt', 'edit', 'inpaint'],
-            'desc': '阿里 Qwen-Image 2.1 官方模型（int8，ComfyUI 运行）：文生图、按指令改图（最多 3 张图）、局部重画都能做。实测比 v23 脸更像、姿势更准，'
-                    '改图时脸和背景基本不变；int8 与原精度 bf16 出图几乎一样、快一倍。参数按老王论坛作者的设置',
-            'defaults': {'steps': 50, 'cfg': 1.0, 'sampler': 'euler', 'scheduler': 'simple'}},
-    'moss': {'name': 'MOSS SFT', 'base': 'MOSS Image', 'speed': '约 45 秒', 'tag': '中国审美的脸', 'backend': 'comfy', 'family': 'moss',
-             'modes': ['txt'], 'refine': True,
-             'desc': 'MOSS Image 官方 SFT 版（int8，ComfyUI 运行，官方模板设置：25 步、CFG 2.5）：脸甜美清纯、照片感强；只做文生图。'
-                     '可在高级参数里加 LoRA（例如 Realistic Snapshot 0.8）',
-             'defaults': {'steps': 25, 'cfg': 2.5, 'sampler': 'er_sde', 'scheduler': 'simple'}},
-    'moss-photo': {'name': 'MOSS 写真', 'base': 'MOSS Image', 'speed': '约 50 秒', 'tag': '胶片感、自然', 'backend': 'comfy', 'family': 'moss',
-                   'modes': ['txt'], 'refine': True, 'fixed_loras': MOSS_PHOTO_LORAS,
-                   'desc': 'MOSS SFT（int8）+ 老王论坛作者的一套写真 LoRA（观澜、feverdream、kuukiikan 空气感、TJFilm 胶片）和设置（CFG 3、偏移 5、跳层引导），'
-                           '200 万像素、30 步：比原版自然，有胶片颗粒和柔光。脸偏东亚，插画风的提示词也会画成真人',
-                   'defaults': {'steps': 30, 'cfg': 3.0, 'sampler': 'er_sde', 'scheduler': 'simple'}},
-    'krea2': {'name': 'Krea 2 Turbo 官方', 'base': 'Krea 2', 'speed': '约 10 秒', 'tag': '提示词理解好、快', 'backend': 'comfy', 'family': 'krea2',
-              'modes': ['txt'],
-              'desc': 'Krea 2 Turbo 官方模型（int8，ComfyUI 运行，官方模板设置：8 步、CFG 1）。只做文生图；LoRA 放在 models/Krea2/loras（Civitai 商店的 Krea 2 LoRA 也下载到这里）',
-              'defaults': {'steps': 8, 'cfg': 1.0, 'sampler': 'euler', 'scheduler': 'simple'}},
-    'h3img': {'name': 'H3-Image', 'base': 'MiniMax H3-Image', 'speed': '约 25 秒', 'tag': '写实、快', 'backend': 'comfy', 'family': 'h3img',
-              'modes': ['txt'],
-              'desc': 'MiniMax H3-Image（int8，6 步，ComfyUI 运行）：写实、快；按所选宽高比出约 415 万像素的图。只做文生图。'
-                      '生视频的 H3 LoRA 也能用（放在 ComfyUI/models/loras/H3_Image）',
-              'defaults': {'steps': 6, 'cfg': 1.0, 'sampler': 'euler', 'scheduler': 'simple'}},
-    'zit-official': {'name': 'Z-Image Turbo 官方原版', 'base': 'Z-Image Turbo', 'speed': '约 15 秒', 'tag': '原版画风', 'backend': 'comfy', 'family': 'zimg',
-                     'modes': ['txt'],
-                     'desc': '阿里通义 Z-Image Turbo 官方原版（bf16，ComfyUI 运行，官方模板设置：8 步、CFG 1）：用官方文本编码器。只做文生图',
-                     'defaults': {'steps': 8, 'cfg': 1.0, 'sampler': 'res_multistep', 'scheduler': 'simple'}},
-    'zit-diving': {'name': 'Diving v7', 'base': 'Z-Image Turbo', 'speed': '约 15 秒', 'tag': '亚洲脸', 'backend': 'comfy', 'family': 'zimg',
-                   'modes': ['txt'],
-                   'desc': 'Diving 的 Z-Image Turbo 亚洲人像微调（v7，ComfyUI 运行，官方模板设置）：脸好看。只做文生图',
-                   'defaults': {'steps': 8, 'cfg': 1.0, 'sampler': 'res_multistep', 'scheduler': 'simple'}},
-}
 
 CHAT = None      # 由 server.py 设：CHAT(system, user, images) → 本地 AI 助手（Qwen3.8）写一次回答
 RELEASE = None   # 由 server.py 设：AI 助手用完立刻放掉显存
@@ -177,8 +139,12 @@ def _path(folder, rel):
 
 
 def missing(key):
+    if FAMILY.get(key) == 'ckpt':  # 通用 Checkpoint：一个文件（自带文本编码器和 VAE）
+        need = [('checkpoints', UNET[key], 'Checkpoint')] + ([('vae', MODEL_TXT[key]['vae'], 'VAE')] if MODEL_TXT.get(key, {}).get('vae') else [])
+        return [n + '（ComfyUI/models/' + f + '/' + r.replace('\\', '/') + '）' for f, r, n in need if not V._have(_path(f, r))]
     t = TXT_ONLY.get(FAMILY.get(key))
-    need = [('diffusion_models', UNET[key], '主模型'), ('text_encoders', t['te'] if t else TE, '文本编码器' if t else '文本编码器 qwen3vl_8b'), ('vae', t['vae'] if t else VAE, 'VAE')]
+    tf = txt_files(key)
+    need = [('diffusion_models', UNET[key], '主模型'), ('text_encoders', tf['te'], '文本编码器' if t else '文本编码器 qwen3vl_8b'), ('vae', tf['vae'], 'VAE')]
     out = [n + '（ComfyUI/models/' + f + '/' + r.replace('\\', '/') + '）' for f, r, n in need if not V._have(_path(f, r))]
     if FAMILY.get(key) == 'h3img' and not h3img_node():
         out.append('新版 ComfyUI（H3-Image 的节点 2026-11-15 才加入，请先更新 ComfyUI）')
@@ -201,7 +167,10 @@ def h3img_node():
 
 
 def lora_sub(key=None):
-    return '' if FAMILY.get(key) in BARE_LORA else LORA_SUBS.get(FAMILY.get(key), LORA_SUB)
+    f = FAMILY.get(key)
+    if 'lora_sub' in (FAMILIES.get(f) or {}):  # 目录里给了这个底子的 LoRA 文件夹（ComfyUI/models/loras/<它>，'' = loras 根目录）
+        return FAMILIES[f]['lora_sub']
+    return '' if f in BARE_LORA else LORA_SUBS.get(f, LORA_SUB)
 
 
 def lora_dir(key=None):
@@ -230,7 +199,7 @@ def pe_ok(kind='i2i', pm=None):
 
 def model_gb(key):
     try:
-        return round(os.path.getsize(_path('diffusion_models', UNET[key])) / 1e9, 1)
+        return round(os.path.getsize(_path('checkpoints' if FAMILY.get(key) == 'ckpt' else 'diffusion_models', UNET[key])) / 1e9, 1)
     except OSError:
         return None
 
@@ -256,8 +225,9 @@ def size_for(mp, w, h, step=32):
 def _base(wf, key, loras=(), te=None):
     """loras：[(ComfyUI 里的 LoRA 名字, 强度)]，依次串上（姿势 LoRA、用户选的 LoRA）"""
     wf['u'] = {'class_type': 'UNETLoader', 'inputs': {'unet_name': UNET[key], 'weight_dtype': 'default'}}
-    wf['c'] = {'class_type': 'CLIPLoader', 'inputs': {'clip_name': te or TE, 'type': 'qwen_image', 'device': 'default'}}
-    wf['v'] = {'class_type': 'VAELoader', 'inputs': {'vae_name': VAE}}
+    tf = txt_files(key)
+    wf['c'] = {'class_type': 'CLIPLoader', 'inputs': {'clip_name': tf['te'] if te in (None, TE) else te, 'type': 'qwen_image', 'device': 'default'}}
+    wf['v'] = {'class_type': 'VAELoader', 'inputs': {'vae_name': tf['vae']}}
     mdl = ['u', 0]
     for i, (name, w) in enumerate(loras or ()):
         wf[f'lo{i}'] = {'class_type': 'LoraLoaderModelOnly', 'inputs': {'model': mdl, 'lora_name': name, 'strength_model': float(w)}}
@@ -309,7 +279,7 @@ def wf_gen(key, names, prompt, seed, w, h, st, prefix, loras=(), te=None):
 def wf_txt_other(key, prompt, seed, w, h, st, prefix, loras=()):
     """MOSS / H3-Image 的文生图（照 ComfyUI 官方模板：image_moss_image_t2i.json；H3-Image 用 MiniMaxH3ImageConditioning，自带空白 latent）"""
     fam = FAMILY[key]
-    t = TXT_ONLY[fam]
+    t = txt_files(key)
     wf = {'u': {'class_type': 'UNETLoader', 'inputs': {'unet_name': UNET[key], 'weight_dtype': 'default'}},
           'c': {'class_type': 'CLIPLoader', 'inputs': {'clip_name': t['te'], 'type': t['type'], 'device': 'default'}},
           'v': {'class_type': 'VAELoader', 'inputs': {'vae_name': t['vae']}}}
@@ -348,6 +318,27 @@ def wf_txt_other(key, prompt, seed, w, h, st, prefix, loras=()):
     wf['k'] = {'class_type': 'KSampler', 'inputs': {'model': mdl, 'positive': ['p', 0], 'negative': ['n', 0], 'latent_image': lat, 'seed': seed % (2 ** 63),
                                                    'steps': st['steps'], 'cfg': st.get('cfg', 1.0), 'sampler_name': st['sampler'], 'scheduler': st['scheduler'], 'denoise': 1.0}}
     wf['d'] = {'class_type': 'VAEDecode', 'inputs': {'samples': ['k', 0], 'vae': ['v', 0]}}
+    wf['o'] = {'class_type': 'SaveImage', 'inputs': {'images': ['d', 0], 'filename_prefix': prefix}}
+    return wf
+
+
+def wf_ckpt(key, prompt, seed, w, h, st, prefix, loras=()):
+    """通用 Checkpoint（SD 1.5 / SDXL / Pony 这类一个文件里带文本编码器和 VAE 的模型，开源泛化 ②）：ComfyUI 默认的文生图工作流。
+    LoRA 用 LoraLoader（同时接模型和文本编码器）；模型自己写了 vae 时换成单独的 VAE；负面提示词在 st['negative']"""
+    wf = {'ck': {'class_type': 'CheckpointLoaderSimple', 'inputs': {'ckpt_name': UNET[key]}}}
+    mdl, clip, vae = ['ck', 0], ['ck', 1], ['ck', 2]
+    for i, (name, wt) in enumerate(list(MODELS.get(key, {}).get('fixed_loras') or ()) + list(loras or ())):
+        wf[f'lo{i}'] = {'class_type': 'LoraLoader', 'inputs': {'model': mdl, 'clip': clip, 'lora_name': name, 'strength_model': float(wt), 'strength_clip': float(wt)}}
+        mdl, clip = [f'lo{i}', 0], [f'lo{i}', 1]
+    if MODEL_TXT.get(key, {}).get('vae'):
+        wf['v'] = {'class_type': 'VAELoader', 'inputs': {'vae_name': MODEL_TXT[key]['vae']}}
+        vae = ['v', 0]
+    wf['p'] = {'class_type': 'CLIPTextEncode', 'inputs': {'clip': clip, 'text': prompt}}
+    wf['n'] = {'class_type': 'CLIPTextEncode', 'inputs': {'clip': clip, 'text': st.get('negative') or ''}}
+    wf['lat'] = {'class_type': 'EmptyLatentImage', 'inputs': {'width': w, 'height': h, 'batch_size': 1}}
+    wf['k'] = {'class_type': 'KSampler', 'inputs': {'model': mdl, 'positive': ['p', 0], 'negative': ['n', 0], 'latent_image': ['lat', 0], 'seed': seed % (2 ** 63),
+                                                   'steps': st['steps'], 'cfg': st.get('cfg', 7.0), 'sampler_name': st['sampler'], 'scheduler': st['scheduler'], 'denoise': 1.0}}
+    wf['d'] = {'class_type': 'VAEDecode', 'inputs': {'samples': ['k', 0], 'vae': vae}}
     wf['o'] = {'class_type': 'SaveImage', 'inputs': {'images': ['d', 0], 'filename_prefix': prefix}}
     return wf
 
@@ -1251,7 +1242,8 @@ def run(j, hooks):
             pre = f'studio_{tag}_{k}'
             los = ([(POSE_LORA, j.get('pose_w', 1.0))] if pose else []) + [(os.path.join(lora_sub(key), x['file']), x['weight']) for x in j.get('loras') or []]
             te = te_name(j)
-            wf = (wf_txt_other(key, prompt, seed, w, h, st, pre, los) if key in FAMILY and FAMILY[key] in TXT_ONLY
+            wf = (wf_ckpt(key, prompt, seed, w, h, st, pre, los) if FAMILY.get(key) == 'ckpt'
+                  else wf_txt_other(key, prompt, seed, w, h, st, pre, los) if key in FAMILY and FAMILY[key] in TXT_ONLY
                   else wf_gen(key, [], prompt, seed, w, h, st, pre, los, te) if mode == 'txt' else wf_gen(key, names, prompt, seed, w, h, st, pre, los, te) if mode == 'edit'
                   else wf_local(key, names[0], mask, names[1:], prompt, seed, st, pre, loras=los, te=te, edge=edge, grow=grow))
             outs = _submit(j, wf, label)

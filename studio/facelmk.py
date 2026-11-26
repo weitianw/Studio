@@ -2,13 +2,15 @@ r"""逐帧人脸关键点（ComfyUI 自带的 MediaPipe Face Landmarker，478 �
 python_embeded\python.exe -I facelmk.py [--multi] 视频或图片 输出.npz [视频或图片 输出.npz ...]
 输出 npz：xy（帧, 478, 2，没认出脸的帧是 nan）、size（高, 宽）；--multi：每帧最多 4 张脸，xy（帧, 4, 478, 2）"""
 import json, os, subprocess, sys
+import os as _os, sys as _sys; _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))  # 用 -I 启动时脚本所在的文件夹不在搜索路径里
+import config  # noqa: E402  路径（开源泛化 ①，studio/config.py）
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-COMFY = os.path.join(ROOT, 'tools', 'ComfyUI_windows_portable', 'ComfyUI')
+COMFY = config.comfy('ComfyUI')
 sys.path.insert(0, COMFY)
 import numpy as np, torch  # noqa: E402
 import comfy.utils  # noqa: E402
 from comfy_extras.nodes_mediapipe import FaceLandmarkerModel  # noqa: E402
-FF = os.path.join(ROOT, 'tools', 'ffmpeg', 'bin', 'ffmpeg.exe')
+FF = config.FFMPEG
 MODEL = os.path.join(COMFY, 'models', 'detection', 'mediapipe_face_fp32.safetensors')
 
 

@@ -1,12 +1,13 @@
 """语音转文字（Qwen3-ASR / Whisper）与大模型校对。被 server.py 调用。"""
 import contextlib, datetime, difflib, hashlib, json, os, re, subprocess, sys, threading, time, traceback, urllib.error, urllib.request, uuid
+import config  # noqa: E402  路径（开源泛化 ①，studio/config.py）
 
 STUDIO = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(STUDIO)
 PYLIB = os.path.join(STUDIO, 'pylib')
 SETTINGS = os.path.join(STUDIO, 'settings.json')
 STT_DIR = os.path.join(ROOT, 'outputs', 'stt')
-FFMPEG = os.path.join(ROOT, 'tools', 'ffmpeg', 'bin', 'ffmpeg.exe')
+FFMPEG = config.FFMPEG
 NO_WINDOW = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
 if not os.environ.get('STUDIO_DEFER_DIRS'):  # 测试启动器改好路径后自己建（F05）
     os.makedirs(STT_DIR, exist_ok=True)
@@ -26,8 +27,8 @@ DEFAULT_SETTINGS = {
     'openai_base_url': '',
     'openai_api_key': '',
     'openai_model': '',
-    'whisper_exe': 'D:/App/PotPlayer/Engine/Faster-Whisper-XXL/faster-whisper-xxl.exe',
-    'whisper_model_dir': 'D:/App/PotPlayer/Model',
+    'whisper_exe': os.path.join(os.path.dirname(config.POTPLAYER), 'Engine', 'Faster-Whisper-XXL', 'faster-whisper-xxl.exe').replace('\\', '/'),
+    'whisper_model_dir': os.path.join(os.path.dirname(config.POTPLAYER), 'Model').replace('\\', '/'),
     'whisper_model': 'large-v3-turbo',
 }
 

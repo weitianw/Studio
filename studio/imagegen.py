@@ -6,14 +6,15 @@
 - 图库：普通空间存 outputs/images，私密空间存 .data/images，各自一份 index.json，互相看不到。
 - 一次任务可以出 1~4 张；每张画完马上存进图库，中途取消也保留已经画好的。"""
 import atexit, base64, contextlib, datetime, json, os, random, re, socket, subprocess, threading, time, urllib.error, urllib.request, uuid
+import config  # noqa: E402  路径（开源泛化 ①，studio/config.py）
 import stages  # 任务计时（每一步用了多久）
 import prompttrace
 
 STUDIO = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(STUDIO)
-SD_DIR = os.environ.get('STUDIO_SD_DIR') or os.path.join(ROOT, 'tools', 'sd.cpp')  # STUDIO_SD_DIR：测试新版 sd.cpp 用
+SD_DIR = config.SD_DIR  # STUDIO_SD_DIR：测试新版 sd.cpp 用
 SD_EXE = os.path.join(SD_DIR, 'sd-server.exe')
-MODEL_DIR = os.path.join(ROOT, 'models', 'Z-Image')
+MODEL_DIR = config.models('Z-Image')
 PORT = 8091
 IDLE_EXIT = 300
 NO_WINDOW = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
@@ -35,11 +36,20 @@ import q21  # noqa: E402  Qwen-Image 2.1：跑在应用的 ComfyUI 上（backend
 MODELS.update(q21.MODELS)
 
 
+def reload_models():
+    """开源泛化 ②：模型目录改了（模型页加 / 改 / 藏了模型）以后重新读：ComfyUI 的那些换成新的，sd.cpp 的不动。返回 ComfyUI 模型数"""
+    q21.load_catalog()
+    for k in [k for k, m in MODELS.items() if m.get('backend') == 'comfy' and k not in q21.MODELS]:
+        MODELS.pop(k)
+    MODELS.update(q21.MODELS)
+    return len(q21.MODELS)
+
+
 def comfy(key):
     return (MODELS.get(key) or {}).get('backend') == 'comfy'
 
 
-CONTROLNET = os.path.join(ROOT, 'models', 'Z-Image', 'controlnet', 'Z-Image-Turbo-Fun-Controlnet-Union-2.1-2602-8steps.safetensors')  # 只给 Z-Image Turbo 系用
+CONTROLNET = config.models('Z-Image', 'controlnet', 'Z-Image-Turbo-Fun-Controlnet-Union-2.1-2602-8steps.safetensors')  # 只给 Z-Image Turbo 系用
 LLM = 'Qwen3-4B-Q8_0.gguf'  # sd.cpp 模型没写 llm 时的默认文本编码器
 VAE = 'ae.safetensors'
 # Turbo 是蒸馏模型：8 步左右、CFG 1 最好（CFG 调到 1 以上负面提示词才起作用，同时也会慢一倍）
@@ -69,7 +79,7 @@ def lora_dir(key):  # 每种模型各用各的 LoRA（Z-Image 的 LoRA 不能给
     if comfy(key):
         return q21.lora_dir(key)
     return os.path.join(model_dir(key), 'loras') if (MODELS.get(key) or {}).get('dir') else LORA_DIR            # 放 LoRA（.safetensors / .gguf）
-UPSCALE_DIR = os.path.join(ROOT, 'models', 'upscalers')  # 放放大模型（ESRGAN，比如 RealESRGAN_x4plus.pth）
+UPSCALE_DIR = config.models('upscalers')  # 放放大模型（ESRGAN，比如 RealESRGAN_x4plus.pth）
 # 引擎支持的采样器、调度器、加速缓存（引擎开着时以它报的为准，见 capabilities()）
 SAMPLERS = ['euler', 'euler_a', 'heun', 'dpm2', 'dpm++2s_a', 'dpm++2m', 'dpm++2mv2', 'ipndm', 'ipndm_v', 'lcm', 'ddim_trailing', 'tcd', 'res_multistep',
             'res_2s', 'er_sde', 'euler_cfg_pp', 'euler_a_cfg_pp', 'euler_ge', 'dpm++2m_sde', 'dpm++2m_sde_bt', 'lms']
@@ -244,7 +254,7 @@ def images_dir(sp=None):
 
 def model_dir(key):
     m = MODELS.get(key) or {}
-    return os.path.join(ROOT, 'models', m['dir']) if m.get('dir') else MODEL_DIR
+    return config.models(m['dir']) if m.get('dir') else MODEL_DIR
 
 
 def model_files(key):

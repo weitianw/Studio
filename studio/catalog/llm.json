@@ -1,0 +1,19 @@
+{
+ "_comment": "AI 助手（llama.cpp）可选的模型。dir / file 相对 models/；mmproj = 识图部分（可选）；mtp = 支持 MTP 加速；gpu = \"fit\" 时按显存自动放（-fit on）。models/llm/ 下自己放的 .gguf 也会列出来（同一文件夹里 mmproj-*.gguf 当识图部分）；也可以写在 studio/user-models.json 的 \"llm\" 里。",
+ "families": {
+  "llama": {
+   "name": "llama.cpp (GGUF)"
+  }
+ },
+ "models": [
+  {
+   "id": "qwen38-27b",
+   "family": "llama",
+   "name": "Qwen3.8 27B (Q4_K_L)",
+   "dir": "Huihui-Qwen3.8-27B-abliterated",
+   "file": "Huihui-Qwen3.8-27B-abliterated-Q4_K_L.gguf",
+   "mmproj": "mmproj-model-bf16.gguf",
+   "mtp": true
+  }
+ ]
+}

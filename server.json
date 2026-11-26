@@ -8,12 +8,12 @@
   "max_loaded_models": 2,
   "ui": true,
   "ui_management": false,
-  "voice_dir": "D:/AI-TTS/voice-library",
+  "voice_dir": "voice-library",
   "models": [
     {
       "id": "breeze",
       "family": "breeze_tts",
-      "path": "D:/AI-TTS/models/Breeze-TTS-2-GGUF/breeze-tts-2-bf16.gguf",
+      "path": "models/Breeze-TTS-2-GGUF/breeze-tts-2-bf16.gguf",
       "task": "tts",
       "mode": "offline",
       "default_request_options": {
@@ -26,14 +26,14 @@
     {
       "id": "indextts",
       "family": "index_tts2",
-      "path": "D:/AI-TTS/models/IndexTTS2.5-GGUF/index-tts2_5-f16.gguf",
+      "path": "models/IndexTTS2.5-GGUF/index-tts2_5-f16.gguf",
       "task": "tts",
       "mode": "offline"
     },
     {
       "id": "qwen3-base",
       "family": "qwen3_tts",
-      "path": "D:/AI-TTS/models/Qwen3-TTS-12Hz-1.7B-Base-GGUF/qwen3-tts-12hz-1.7b-base-bf16.gguf",
+      "path": "models/Qwen3-TTS-12Hz-1.7B-Base-GGUF/qwen3-tts-12hz-1.7b-base-bf16.gguf",
       "task": "tts",
       "mode": "offline",
       "session_options": {
@@ -43,7 +43,7 @@
     {
       "id": "qwen3-design",
       "family": "qwen3_tts",
-      "path": "D:/AI-TTS/models/Qwen3-TTS-12Hz-1.7B-VoiceDesign-GGUF/qwen3-tts-12hz-1.7b-voicedesign-bf16.gguf",
+      "path": "models/Qwen3-TTS-12Hz-1.7B-VoiceDesign-GGUF/qwen3-tts-12hz-1.7b-voicedesign-bf16.gguf",
       "task": "tts",
       "mode": "offline",
       "session_options": {
@@ -53,7 +53,7 @@
     {
       "id": "qwen3-custom",
       "family": "qwen3_tts",
-      "path": "D:/AI-TTS/models/Qwen3-TTS-12Hz-1.7B-CustomVoice-GGUF/qwen3-tts-12hz-1.7b-customvoice-bf16.gguf",
+      "path": "models/Qwen3-TTS-12Hz-1.7B-CustomVoice-GGUF/qwen3-tts-12hz-1.7b-customvoice-bf16.gguf",
       "task": "tts",
       "mode": "offline",
       "session_options": {
@@ -63,19 +63,19 @@
     {
       "id": "seedvc",
       "family": "seed_vc",
-      "path": "D:/AI-TTS/models/SeedVC-MLX-GGUF/seed-vc-mlx-f16.gguf",
+      "path": "models/SeedVC-MLX-GGUF/seed-vc-mlx-f16.gguf",
       "task": "vc",
       "mode": "offline"
     },
     {
       "id": "asr",
       "family": "qwen3_asr",
-      "path": "D:/AI-TTS/models/Qwen3-ASR-1.7B-GGUF/qwen3-asr-1.7b-q8_0.gguf",
+      "path": "models/Qwen3-ASR-1.7B-GGUF/qwen3-asr-1.7b-q8_0.gguf",
       "task": "asr",
       "mode": "offline",
       "session_options": {
-        "qwen3_asr.forced_aligner_path": "D:/AI-TTS/models/Qwen3-ForcedAligner-0.6B-GGUF/qwen3-forced-aligner-0.6b-f16.gguf",
-        "qwen3_asr.vad_model_path": "D:/AI-TTS/models/silero_vad"
+        "qwen3_asr.forced_aligner_path": "models/Qwen3-ForcedAligner-0.6B-GGUF/qwen3-forced-aligner-0.6b-f16.gguf",
+        "qwen3_asr.vad_model_path": "models/silero_vad"
       }
     }
   ]

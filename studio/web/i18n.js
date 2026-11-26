@@ -1,11 +1,15 @@
-/* Interface language: English (default) or Chinese, switched in Settings -> Appearance (localStorage "studio.lang").
+/* Interface language: English or Chinese, switched in Settings -> Appearance (localStorage "studio.lang"); the default comes from config.UI_LANG.
    The UI source strings are Chinese. In English mode, a runtime layer replaces Chinese UI text with English in place,
    using a dictionary extracted from the source (i18n-en.js): text nodes and the title / placeholder / aria-label / data-tip / alt
    attributes, kept up to date with a MutationObserver. Text the user types (inputs, textareas, editable areas) is never changed.
    Native alert / confirm / prompt messages and the document title are translated the same way. */
 (() => {
-  let lang = 'en';
-  try { lang = localStorage.getItem('studio.lang') || 'en'; } catch (e) { /* private mode */ }
+  const def0 = document.documentElement.dataset.langDefault;  // set by the server from config.UI_LANG (studio/defaults.json)
+  let lang = def0 || 'zh';
+  try {
+    if (def0) localStorage.setItem('studio.langDefault', def0);
+    lang = localStorage.getItem('studio.lang') || def0 || localStorage.getItem('studio.langDefault') || 'zh';
+  } catch (e) { /* private mode */ }
   window.STUDIO_LANG = lang;
   window.setStudioLang = v => { try { localStorage.setItem('studio.lang', v); } catch (e) { } location.reload(); };
   document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN';

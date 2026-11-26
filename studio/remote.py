@@ -10,10 +10,11 @@
   只对那一台设备有效；电脑上移除这台设备就全部作废。
 """
 import hashlib, json, os, secrets, subprocess, threading, time
+import config  # noqa: E402  路径（开源泛化 ①，studio/config.py）
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONF = os.path.join(ROOT, 'outputs', 'remote.json')
-TS_EXE = r'C:\Program Files\Tailscale\tailscale.exe'
+TS_EXE = (lambda p: p if os.path.isfile(p) else (__import__('shutil').which('tailscale') or p))(r'C:\Program Files\Tailscale\tailscale.exe')
 NO_WINDOW = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
 lock = threading.RLock()  # 读-改-写整段都拿着它：两个请求同时改设备列表时不会互相覆盖
 _code = {}  # {'code', 'exp', 'tries'}
